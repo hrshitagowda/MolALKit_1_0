@@ -10,6 +10,5 @@
     "fingerprints_class": [
         "rdkit_2d_normalized"
     ],
-	"features_kernel_type": "rbf",
 	"features_hyperparameters_file": "model_config/hyperparameters/bace/rbf.json"
 }

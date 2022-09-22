@@ -1,4 +1,5 @@
 {
+ "features_kernel_type": "rbf",
  "features_hyperparameters": [
   18.05145604784157
  ],
