@@ -3,7 +3,7 @@
 import os
 
 CWD = os.path.dirname(os.path.abspath(__file__))
-from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
+from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple, Callable
 from logging import Logger
 import pickle
 from sklearn.gaussian_process.kernels import RBF, DotProduct
@@ -27,7 +27,9 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
              mixture_columns: List[str] = None,
              target_columns: List[str] = None,
              feature_columns: List[str] = None,
-             features_generator: List[str] = None,
+             features_generator: List[Union[str, Callable]] = None,
+             features_combination: Literal['concat', 'mean'] = None,
+             graph_kernel_type: Literal['graph', 'pre-computed'] = None,
              n_jobs: int = 8):
     if data_format == 'fingerprints':
         from alb.data.utils import get_data
@@ -37,6 +39,7 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
                         target_columns=target_columns,
                         feature_columns=feature_columns,
                         features_generator=features_generator,
+                        features_combination=features_combination,
                         n_jobs=n_jobs)
     elif data_format == 'chemprop':
         from chemprop.data.utils import get_data
@@ -47,6 +50,7 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
                         target_columns=target_columns,
                         features_generator=features_generator)
     elif data_format == 'mgktools':
+        assert graph_kernel_type is not None
         from mgktools.data.data import get_data
         return get_data(path=path,
                         pure_columns=pure_columns,
@@ -54,8 +58,9 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
                         target_columns=target_columns,
                         feature_columns=feature_columns,
                         features_generator=features_generator,
-                        features_combination='concat',
+                        features_combination=features_combination,
                         mixture_type='single_graph',
+                        graph_kernel_type=graph_kernel_type,
                         n_jobs=n_jobs)
     else:
         raise ValueError('input error')
@@ -70,6 +75,7 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               num_tasks: int = 1,
               multiclass_num_classes: int = 3,
               features_generator=None,
+              no_features_scaling: bool = False,
               features_only: bool = False,
               features_size: int = 0,
               epochs: int = 30,
@@ -90,30 +96,40 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               frzn_ffn_layers: int = 0,
               freeze_first_only: bool = False,
               kernel=None,
+              uncertainty_type: Literal['value', 'uncertainty'] = None,
+              alpha: Union[float, str] = 1e-8,
               n_jobs: int = 8,
               seed: int = 0,
               logger: Logger = None,
               ):
+    if alpha.__class__ == str:
+        alpha = float(open(alpha).read())
+
     if data_format == 'fingerprints':
         if model == 'random_forest':
             if dataset_type == 'regression':
                 from alb.models.random_forest.RandomForestRegressor import RFRegressor
-                return RFRegressor()
+                return RFRegressor(random_state=seed)
             else:
                 from alb.models.random_forest.RandomForestClassifier import RFClassifier
-                return RFClassifier()
+                return RFClassifier(random_state=seed)
+        elif model == 'logistic_regression':
+            assert dataset_type == 'classification'
+            from alb.models.logistic_regression.LogisticRegression import LogisticRegressor
+            return LogisticRegressor(random_state=seed)
         elif model == 'gaussian_process_regression':
             assert dataset_type in ['regression', 'classification']
+            assert uncertainty_type is not None
             from alb.models.gaussian_process.GaussianProcessRegressor import GPRegressor
-            return GPRegressor(kernel=kernel)
+            return GPRegressor(kernel=kernel, alpha=alpha, optimizer=None, uncertainty_type=uncertainty_type)
         elif model == 'gaussian_process_classification':
             assert dataset_type == 'classification'
             from alb.models.gaussian_process.GaussianProcessClassifier import GPClassifier
-            return GPClassifier(kernel=kernel)
+            return GPClassifier(kernel=kernel, optimizer=None)
         elif model == 'support_vector_machine':
             assert dataset_type == 'classification'
             from alb.models.support_vector.SupportVectorClassifier import SVClassifier
-            return SVClassifier(kernel=kernel)
+            return SVClassifier(kernel=kernel, probability=True)
         else:
             raise ValueError(f'unknown model: {model}')
     elif data_format == 'chemprop':
@@ -124,6 +140,7 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
                     num_tasks=num_tasks,
                     multiclass_num_classes=multiclass_num_classes,
                     features_generator=features_generator,
+                    no_features_scaling=no_features_scaling,
                     features_only=features_only,
                     features_size=features_size,
                     epochs=epochs,
@@ -149,16 +166,17 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
     elif data_format == 'mgktools':
         if model == 'gaussian_process_regression':
             assert dataset_type in ['regression', 'classification']
+            assert uncertainty_type is not None
             from alb.models.gaussian_process.GaussianProcessRegressor import GPRegressor
-            return GPRegressor(kernel=kernel)
+            return GPRegressor(kernel=kernel, alpha=alpha, optimizer=None, uncertainty_type=uncertainty_type)
         elif model == 'gaussian_process_classification':
             assert dataset_type == 'classification'
             from alb.models.gaussian_process.GaussianProcessClassifier import GPClassifier
-            return GPClassifier(kernel=kernel)
+            return GPClassifier(kernel=kernel, optimizer=None)
         elif model == 'support_vector_machine':
             assert dataset_type == 'classification'
             from alb.models.support_vector.SupportVectorClassifier import SVClassifier
-            return SVClassifier(kernel=kernel)
+            return SVClassifier(kernel=kernel, probability=True)
         else:
             raise ValueError(f'unknown model: {model}')
     else:
@@ -168,7 +186,7 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
 def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
                mgk_files: List[str] = None,
                features_kernel_type: Literal['linear', 'dot_product', 'rbf'] = None,
-               rbf_length_scale: Union[float, List[float]] = None,
+               features_hyperparameters: Union[float, List[float]] = None,
                features_hyperparameters_file: str = None,
                dataset: Dataset = None,
                kernel_pkl_path: str = None,
@@ -181,9 +199,9 @@ def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
         elif features_kernel_type == 'linear':
             return 'linear'
         elif features_kernel_type == 'dot_product':
-            return DotProduct()
+            return DotProduct(sigma_0=features_hyperparameters)
         elif features_kernel_type == 'rbf':
-            return RBF(length_scale=rbf_length_scale)
+            return RBF(length_scale=features_hyperparameters)
         else:
             raise ValueError
     else:
@@ -193,8 +211,8 @@ def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
                 graph_kernel_type='graph',
                 mgk_hyperparameters_files=mgk_files,
                 features_kernel_type=features_kernel_type,
-                rbf_length_scale=rbf_length_scale,
-                rbf_length_scale_bounds="fixed",
+                features_hyperparameters=features_hyperparameters,
+                features_hyperparameters_bounds=None,
                 features_hyperparameters_file=features_hyperparameters_file
             ).kernel
         elif graph_kernel_type == 'pre-computed':
@@ -204,22 +222,22 @@ def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
                     dataset=dataset,
                     graph_kernel_type='pre-computed',
                     features_kernel_type=features_kernel_type,
-                    rbf_length_scale=rbf_length_scale,
-                    rbf_length_scale_bounds="fixed",
+                    features_hyperparameters=features_hyperparameters,
+                    features_hyperparameters_bounds=None,
                     features_hyperparameters_file=features_hyperparameters_file,
                     kernel_pkl=kernel_pkl_path
                 ).kernel
             else:
+                dataset.graph_kernel_type = 'graph'
                 kernel_config = get_kernel_config(
                     dataset=dataset,
                     graph_kernel_type='graph',
                     mgk_hyperparameters_files=mgk_files,
                     features_kernel_type=features_kernel_type,
-                    rbf_length_scale=rbf_length_scale,
-                    rbf_length_scale_bounds="fixed",
+                    features_hyperparameters=features_hyperparameters,
+                    features_hyperparameters_bounds=None,
                     features_hyperparameters_file=features_hyperparameters_file
                 )
-                dataset.graph_kernel_type = 'graph'
                 kernel_dict = kernel_config.get_kernel_dict(dataset.X, dataset.X_repr.ravel())
                 dataset.graph_kernel_type = 'pre-computed'
                 pickle.dump(kernel_dict, open(kernel_pkl_path, 'wb'), protocol=4)
@@ -227,8 +245,8 @@ def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
                     dataset=dataset,
                     graph_kernel_type='pre-computed',
                     features_kernel_type=features_kernel_type,
-                    rbf_length_scale=rbf_length_scale,
-                    rbf_length_scale_bounds="fixed",
+                    features_hyperparameters=features_hyperparameters,
+                    features_hyperparameters_bounds=None,
                     features_hyperparameters_file=features_hyperparameters_file,
                     kernel_dict=kernel_dict
                 ).kernel

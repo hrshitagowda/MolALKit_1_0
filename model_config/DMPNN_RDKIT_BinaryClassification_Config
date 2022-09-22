@@ -1,7 +1,7 @@
 {
     "data_format": "chemprop",
     "loss_function": "binary_cross_entropy",
-    "epochs": 30,
+    "epochs": 100,
     "depth": 3,
     "hidden_size": 300,
     "ffn_num_layers": 2,
@@ -10,8 +10,7 @@
     "batch_size": 50,
     "ensemble_size": 1,
     "fingerprints_class": [
-        "rdkit_2d"
+        "rdkit_2d_normalized"
     ],
-    "radius": 2,
-    "num_bits": 1024
+	"no_features_scaling": true
 }

@@ -3,16 +3,15 @@
 from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
 import copy
 import os
+import json
 import pickle
 import numpy as np
 import pandas as pd
 import rdkit.Chem.AllChem as Chem
 from joblib import Parallel, delayed
 from sklearn.preprocessing import StandardScaler
-import networkx as nx
-from mgktools.graph import HashGraph
 from mgktools.features_mol import FeaturesGenerator
-
+from mgktools.data.data import tolist, to_numpy
 # Cache of RDKit molecules
 CACHE_MOL = True
 SMILES_TO_MOL: Dict[str, Chem.Mol] = {}
@@ -53,6 +52,7 @@ class DataPointPure:
 
     def __init__(self, smiles: str):
         self.smiles = smiles
+        self.fingerprints = None
 
     def __repr__(self) -> str:
         return self.smiles
@@ -66,14 +66,18 @@ class DataPointPure:
             SMILES_TO_MOL[self.smiles] = mol
             return mol
 
+    @property
+    def mols(self):
+        return [self.mol]
+
     def set_fingerprints(self, features_generator: List[FeaturesGenerator]):
-        self.fingerprints = []
+        fingerprints = []
         for fg in features_generator:
-            self.fingerprints.append(self.calc_features_mol(self.mol, fg))
-        self.fingerprints = np.concatenate(self.fingerprints)
+            fingerprints.append(self.calc_features_mol(self.mol, fg))
+        fingerprints = np.concatenate(fingerprints)
         # Fix nans in features_mol
         replace_token = 0
-        self.fingerprints = np.where(np.isnan(self.fingerprints), replace_token, self.fingerprints)
+        self.fingerprints = np.where(np.isnan(fingerprints), replace_token, fingerprints)
 
     @staticmethod
     def calc_features_mol(mol: Chem.Mol, features_generator: FeaturesGenerator):
@@ -108,7 +112,7 @@ class DataPointMix:
         self.data = data
         # set concentration
         if concentration is None:
-            self.concentration = [1.0] * len(data)
+            self.concentration = [1.0 / len(data)] * len(data)
         else:
             self.concentration = concentration
         self.fingerprints = None
@@ -131,10 +135,24 @@ class DataPointMix:
                          concentration: List[float] = None):
         return cls([DataPointPure(s) for s in smiles], concentration=concentration)
 
-    def set_fingerprints(self, features_generator: List[FeaturesGenerator]):
-        for d in self.data:
-            d.set_fingerprints(features_generator)
-        self.fingerprints = np.mean([d.fingerprints for d in self.data], axis=0)  # 1-d array
+    def set_fingerprints(self, features_generator: List[FeaturesGenerator],
+                         features_combination: Literal['concat', 'mean'] = None):
+        if features_generator is None:
+            return
+        if len(self.data) != 1:
+            self.fingerprints = []
+            for i, d in enumerate(self.data):
+                d.set_fingerprints(features_generator)
+                self.fingerprints.append(d.fingerprints * self.concentration[i])
+            if features_combination == 'mean':
+                self.fingerprints = np.mean(self.fingerprints, axis=0)
+            elif features_combination == 'concat':
+                self.fingerprints = np.concatenate(self.fingerprints)
+            else:
+                raise ValueError(f'unknown feature combination: f{features_combination}')
+        else:
+            self.data[0].set_fingerprints(features_generator)
+            self.fingerprints = self.data[0].fingerprints
 
 
 class DataPoint:
@@ -158,17 +176,11 @@ class DataPoint:
                  targets: List[float],
                  features_add: List[float] = None):
         # read data point
-        if data_p is None:
-            self.data = data_m
-        elif data_m is None:
-            self.data = data_p
-        else:
-            self.data = data_p + data_m
+        self.data_p = data_p or []
+        self.data_m = data_m or []
+        self.data = self.data_p + self.data_m
         self.targets = targets
-        # features_mol set None
-        self.features_mol = None
         self.features_add = features_add
-        #
         self.fingerprints = None
 
     def __repr__(self) -> str:
@@ -178,15 +190,16 @@ class DataPoint:
         return repr
 
     @property
-    def mols(self, flatten=False) -> List[Chem.Mol]:
-        if flatten is True:
-            raise ValueError('set flatten to False')
+    def mols(self) -> List[List[Chem.Mol]]:
         return [d.mols for d in self.data]
 
-    def set_fingerprints(self, features_generator: List[FeaturesGenerator]):
-        for d in self.data:
+    def set_fingerprints(self, features_generator: List[FeaturesGenerator],
+                         features_combination: Literal['concat', 'mean'] = None):
+        for d in self.data_p:
             d.set_fingerprints(features_generator)
-        self.fingerprints = np.sum([d.fingerprints for d in self.data], axis=0)  # 1-d array
+        for d in self.data_m:
+            d.set_fingerprints(features_generator, features_combination=features_combination)
+        self.fingerprints = np.concatenate([d.fingerprints for d in self.data], axis=0)  # 1-d array
 
     @property
     def y(self) -> np.ndarray:  # List[List[float]]
@@ -242,7 +255,11 @@ class Dataset:
 
     @property
     def y(self) -> np.ndarray:  # List[List[float]]
-        return np.asarray([d.y for d in self.data])
+        y = concatenate([d.targets for d in self.data], axis=0)
+        if y is not None and y.shape[1] == 1:
+            return y.ravel()
+        else:
+            return y
 
     @property
     def N_tasks(self) -> int:
@@ -307,7 +324,8 @@ class Dataset:
             mixture: List[Union[str, float]],
             targets: List[float],
             features_add: List[float] = None,
-            features_generator: List[FeaturesGenerator] = None
+            features_generator: List[FeaturesGenerator] = None,
+            features_combination: Literal['concat', 'mean'] = None,
     ) -> DataPoint:
         data_p = [DataPointPure(s) for s in smiles] if smiles is not None else None
         data_m = [DataPointMix.from_smiles_list(m[0::2], m[1::2]) for m in mixture] if mixture is not None else None
@@ -315,7 +333,7 @@ class Dataset:
                          data_m=data_m,
                          targets=targets,
                          features_add=features_add)
-        data.set_fingerprints(features_generator)
+        data.set_fingerprints(features_generator, features_combination=features_combination)
         return data
 
     @classmethod
@@ -325,15 +343,17 @@ class Dataset:
                        target_columns: List[str] = None,
                        feature_columns: List[str] = None,
                        features_generator: List[FeaturesGenerator] = None,
+                       features_combination: Literal['concat', 'mean'] = None,
                        n_jobs: int = 8):
         data = Parallel(
             n_jobs=n_jobs, verbose=True, prefer='processes')(
             delayed(cls.read_DataPoint)(
-                df.iloc[i].get(pure_columns),
-                df.iloc[i].get(mixture_columns),
-                df.iloc[i].get(target_columns),
-                features_add=df.iloc[i].get(feature_columns),
-                features_generator=features_generator
+                tolist(df.iloc[i].get(pure_columns)),
+                tolist(df.iloc[i].get(mixture_columns)),
+                to_numpy(df.iloc[i:i + 1][target_columns]),
+                features_add=to_numpy(df.iloc[i:i + 1].get(feature_columns)),
+                features_generator=features_generator,
+                features_combination=features_combination,
             )
             for i in df.index)
         return cls(data)

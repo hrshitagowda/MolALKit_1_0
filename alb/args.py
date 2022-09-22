@@ -8,7 +8,7 @@ from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
 from logging import Logger
 import json
 import pandas as pd
-from sklearn.gaussian_process.kernels import RBF, DotProduct
+import numpy as np
 from mgktools.features_mol import FeaturesGenerator
 from alb.logging import create_logger
 from alb.data.utils import split_data
@@ -20,13 +20,13 @@ Metric = Literal['roc-auc', 'accuracy', 'precision', 'recall', 'f1_score', 'mcc'
 
 class CommonArgs(Tap):
     save_dir: str
-    """The output directory."""
+    """the output directory."""
     n_jobs: int = 1
-    """The cpu numbers used for parallel computing."""
+    """the cpu numbers used for parallel computing."""
     quiet: bool = False
     """Whether the stream handler should be quiet (i.e., print only important info)."""
     logger_name: str = 'alb_output'
-    """The prefix of the output logger file: verbose.log and quite.log"""
+    """the prefix of the output logger file: verbose.log and quite.log"""
     seed: int = 0
     """random seed."""
 
@@ -39,13 +39,13 @@ class DatasetArgs(CommonArgs):
     data_public: Literal['freesolv', 'delaney', 'clintox', 'bace', 'bbbp'] = None
     """Use public data sets."""
     data_path: str = None
-    """The Path of input data CSV file."""
+    """the Path of input data CSV file."""
     data_path_training: str = None
-    """The Path of input data CSV file for training set."""
+    """the Path of input data CSV file for training set."""
     data_path_pool: str = None
-    """The Path of input data CSV file for pool set."""
+    """the Path of input data CSV file for pool set."""
     data_path_val: str = None
-    """The Path of input data CSV file for validation set."""
+    """the Path of input data CSV file for validation set."""
     pure_columns: List[str] = None
     """
     For pure compounds.
@@ -92,6 +92,21 @@ class DatasetArgs(CommonArgs):
             self.pure_columns = ['smiles']
             self.target_columns = ['logSolubility']
             self.dataset_type = 'regression'
+        elif self.data_public == 'lipo':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['lipo']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'pdbbind_refined':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['-logKd/Ki']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'pdbbind_full':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['-logKd/Ki']
+            self.dataset_type = 'regression'
         elif self.data_public == 'clintox':
             self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
             self.pure_columns = ['smiles']
@@ -118,7 +133,8 @@ class DatasetArgs(CommonArgs):
         if self.data_path is not None:
             assert self.data_path_val is None and self.data_path_training is None and self.data_path_pool is None
             df = pd.read_csv(self.data_path)
-            al_index, val_index = split_data(smiles=df[self.pure_columns[0]],
+            al_index, val_index = split_data(n_samples=len(df),
+                                             smiles=df[self.pure_columns[0]] if self.pure_columns is not None else None,
                                              # targets=df[self.target_columns[0]],
                                              split_type=self.split_type,
                                              sizes=self.split_sizes,
@@ -127,41 +143,29 @@ class DatasetArgs(CommonArgs):
             df[df.index.isin(val_index)].to_csv('%s/val.csv' % self.save_dir, index=False)
             df_al = df[df.index.isin(al_index)]
             if self.dataset_type == 'regression':
-                train_index, pool_index = split_data(smiles=df_al[self.pure_columns[0]],
-                                                     split_type='random',
-                                                     sizes=[2 / len(df_al), 1 - 2 / len(df_al)])
+                train_index, pool_index = split_data(
+                    n_samples=len(df_al),
+                    smiles=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                    split_type='random',
+                    sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
+                    seed=self.seed)
             else:
-                train_index, pool_index = split_data(smiles=df_al[self.pure_columns[0]],
-                                                     targets=df_al[self.target_columns[0]],
-                                                     split_type='class',
-                                                     n_samples_per_class=1)
+                train_index, pool_index = split_data(
+                    n_samples=len(df_al),
+                    smiles=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                    targets=df_al[self.target_columns[0]],
+                    split_type='class',
+                    n_samples_per_class=1,
+                    seed=self.seed)
+                if self.init_size > 2:
+                    train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
+                    _ = []
+                    for i in pool_index:
+                        if i not in train_index:
+                            _.append(i)
+                    pool_index = _
             df_al.iloc[train_index].to_csv('%s/train_init.csv' % self.save_dir, index=False)
             df_al.iloc[pool_index].to_csv('%s/pool_init.csv' % self.save_dir, index=False)
-
-
-class MarginalizedGraphKernelArgs(Tap):
-    mgk_type: Literal['graph'] = None
-    """The type of graph kernel to use."""
-    mgk_hyperparameters_file: str = None
-    """hyperparameters file for graph kernel."""
-
-
-class FingerprintsKernelArgs(Tap):
-    fingerprints_kernel_type: Literal['rbf', 'linear'] = None
-    """The type of fingerprints kernel to use."""
-    features_hyperparameters: List[float] = None
-    """hyperparameters for fingperprints."""
-    features_hyperparameters_file: str = None
-    """JSON file contains features hyperparameters"""
-
-
-class KernelArgs(CommonArgs, MarginalizedGraphKernelArgs, FingerprintsKernelArgs):
-    pre_computed: bool = False
-    """Whether use the pre-computed kernel."""
-
-    @property
-    def kernel_pkl(self) -> str:
-        return os.path.join(self.save_dir, 'kernel.pkl')
 
 
 class ModelArgs(Tap):
@@ -169,6 +173,8 @@ class ModelArgs(Tap):
     """config file contain all information of the machine learning model."""
     model_config_evaluator: str = None
     """config file contain all information of the machine learning model for performance evaluation."""
+    model_config_extra_evaluators: List[str] = None
+    """A list of config files contain all information of the machine learning model for performance evaluation."""
 
     @property
     def yoked_learning(self) -> bool:
@@ -188,20 +194,44 @@ class ModelArgs(Tap):
         else:
             return json.loads(open(self.model_config_evaluator).read())
 
+    @property
+    def model_config_extra_evaluators_dict(self) -> List[Dict]:
+        if self.model_config_extra_evaluators is None:
+            return []
+        else:
+            return [json.loads(open(m).read()) for m in self.model_config_extra_evaluators]
 
-class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
+
+class ActiveLearningArgs(DatasetArgs, ModelArgs):
     save_dir: str
-    """The output directory."""
+    """the output directory."""
     n_jobs: int = 1
-    """The cpu numbers used for parallel computing."""
+    """the cpu numbers used for parallel computing."""
     data_path: str = None
-    """The Path of input data CSV file."""
+    """the Path of input data CSV file."""
     learning_type: Literal['explorative', 'exploitive', 'EI', 'passive']
-    """The learning type to be performed."""
+    """the learning type to be performed."""
     metrics: List[Metric]
-    """The metrics to evaluate model performance."""
+    """the metrics to evaluate model performance."""
     evaluate_stride: int = 100
-    """Evaluate model performance on the validation set after no. steps of active learning."""
+    """evaluate model performance on the validation set when the size of the training set is an integer multiple of the 
+    evaluation stride."""
+    extra_evaluators_only: bool = False
+    """Output active learing trajectory of extra evaluators only."""
+    init_size: int = 2
+    """number of samples as the initial."""
+    batch_size: int = 1
+    """number of samples added in each active learning iteration."""
+    batch_style: Literal['nlargest', 'clustering'] = 'nlargest'
+    """the method that add a batch of samples."""
+    stop_ratio: float = None
+    """the ratio of molecules to stop the active learning."""
+    stop_size: int = None
+    """the number of molecules to stop the active learning."""
+    save_cpt_stride: int = None
+    """save checkpoint file every no. steps of active learning iteration."""
+    load_checkpoint: bool = False
+    """load"""
 
     @property
     def model_selector(self):
@@ -215,6 +245,7 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
                 num_tasks=len(self.target_columns),
                 multiclass_num_classes=self.model_config_selector_dict.get('loss_function') or 3,
                 features_generator=self.features_generator_selector,
+                no_features_scaling=self.model_config_selector_dict.get('no_features_scaling') or False,
                 features_only=self.model_config_selector_dict.get('features_only') or False,
                 features_size=self.data_train_selector.features_size(),
                 epochs=self.model_config_selector_dict.get('epochs') or 30,
@@ -235,6 +266,8 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
                 frzn_ffn_layers=self.model_config_selector_dict.get('frzn_ffn_layers') or 0,
                 freeze_first_only=self.model_config_selector_dict.get('freeze_first_only') or False,
                 kernel=self.kernel_selector,
+                uncertainty_type=self.model_config_selector_dict.get('uncertainty_type'),
+                alpha=self.model_config_selector_dict.get('alpha'),
                 n_jobs=self.n_jobs,
                 seed=self.seed,
                 logger=self.logger
@@ -254,6 +287,7 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
                     num_tasks=len(self.target_columns),
                     multiclass_num_classes=self.model_config_evaluator_dict.get('loss_function') or 3,
                     features_generator=self.features_generator_evaluator,
+                    no_features_scaling=self.model_config_evaluator_dict.get('no_features_scaling') or False,
                     features_only=self.model_config_evaluator_dict.get('features_only') or False,
                     features_size=self.data_train_evaluator.features_size(),
                     epochs=self.model_config_evaluator_dict.get('epochs') or 30,
@@ -274,6 +308,8 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
                     frzn_ffn_layers=self.model_config_evaluator_dict.get('frzn_ffn_layers') or 0,
                     freeze_first_only=self.model_config_evaluator_dict.get('freeze_first_only') or False,
                     kernel=self.kernel_evaluator,
+                    uncertainty_type=self.model_config_evaluator_dict.get('uncertainty_type'),
+                    alpha=self.model_config_evaluator_dict.get('alpha'),
                     n_jobs=self.n_jobs,
                     seed=self.seed,
                     logger=self.logger
@@ -283,43 +319,93 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
             return self.model_selector
 
     @property
+    def model_extra_evaluators(self):
+        if not hasattr(self, '_model_extra_evaluators'):
+            self._model_extra_evaluators = [get_model(
+                data_format=model_config['data_format'],
+                dataset_type=self.dataset_type,
+                model=model_config.get('model'),
+                save_dir='%s/extra_evaluator_%d' % (self.save_dir, i),
+                loss_function=model_config.get('loss_function'),
+                num_tasks=len(self.target_columns),
+                multiclass_num_classes=model_config.get('loss_function') or 3,
+                features_generator=self.features_generator_extra_evaluators[i],
+                no_features_scaling=model_config.get('no_features_scaling') or False,
+                features_only=model_config.get('features_only') or False,
+                features_size=self.data_train_extra_evaluators[i].features_size(),
+                epochs=model_config.get('epochs') or 30,
+                depth=model_config.get('depth') or 3,
+                hidden_size=model_config.get('hidden_size') or 300,
+                ffn_num_layers=model_config.get('ffn_num_layers') or 2,
+                ffn_hidden_size=model_config.get('ffn_hidden_size'),
+                dropout=model_config.get('dropout') or 0.0,
+                batch_size=model_config.get('batch_size') or 50,
+                ensemble_size=model_config.get('ensemble_size') or 1,
+                number_of_molecules=model_config.get('number_of_molecules') or 1,
+                mpn_shared=model_config.get('mpn_shared') or False,
+                atom_messages=model_config.get('atom_messages') or False,
+                undirected=model_config.get('undirected') or False,
+                class_balance=model_config.get('class_balance') or False,
+                checkpoint_dir=model_config.get('checkpoint_dir'),
+                checkpoint_frzn=model_config.get('checkpoint_frzn'),
+                frzn_ffn_layers=model_config.get('frzn_ffn_layers') or 0,
+                freeze_first_only=model_config.get('freeze_first_only') or False,
+                kernel=self.kernel_extra_evaluators[i],
+                uncertainty_type=model_config.get('uncertainty_type'),
+                alpha=model_config.get('alpha'),
+                n_jobs=self.n_jobs,
+                seed=self.seed,
+                logger=self.logger
+            ) for i, model_config in enumerate(self.model_config_extra_evaluators_dict)]
+        return self._model_extra_evaluators
+
+    @property
     def data_train_selector(self):
         if not hasattr(self, '_data_train_selector'):
-            self._data_train_selector = get_data(data_format=self.model_config_selector_dict['data_format'],
-                                                 path='%s/train_init.csv' % self.save_dir,
-                                                 pure_columns=self.pure_columns,
-                                                 mixture_columns=self.mixture_columns,
-                                                 target_columns=self.target_columns,
-                                                 feature_columns=self.feature_columns,
-                                                 features_generator=self.features_generator_selector,
-                                                 n_jobs=self.n_jobs)
+            self._data_train_selector = get_data(
+                data_format=self.model_config_selector_dict['data_format'],
+                path='%s/train_init.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_selector,
+                features_combination=self.model_config_selector_dict.get('features_combination'),
+                graph_kernel_type=self.model_config_selector_dict.get('graph_kernel_type'),
+                n_jobs=self.n_jobs)
         return self._data_train_selector
 
     @property
     def data_pool_selector(self):
         if not hasattr(self, '_data_pool_selector'):
-            self._data_pool_selector = get_data(data_format=self.model_config_selector_dict['data_format'],
-                                                path='%s/pool_init.csv' % self.save_dir,
-                                                pure_columns=self.pure_columns,
-                                                mixture_columns=self.mixture_columns,
-                                                target_columns=self.target_columns,
-                                                feature_columns=self.feature_columns,
-                                                features_generator=self.features_generator_selector,
-                                                n_jobs=self.n_jobs)
+            self._data_pool_selector = get_data(
+                data_format=self.model_config_selector_dict['data_format'],
+                path='%s/pool_init.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_selector,
+                features_combination=self.model_config_selector_dict.get('features_combination'),
+                graph_kernel_type=self.model_config_selector_dict.get('graph_kernel_type'),
+                n_jobs=self.n_jobs)
         return self._data_pool_selector
 
     @property
     def data_train_evaluator(self):
         if self.yoked_learning:
             if not hasattr(self, '_data_train_evaluator'):
-                self._data_train_evaluator = get_data(data_format=self.model_config_evaluator_dict['data_format'],
-                                                      path='%s/train_init.csv' % self.save_dir,
-                                                      pure_columns=self.pure_columns,
-                                                      mixture_columns=self.mixture_columns,
-                                                      target_columns=self.target_columns,
-                                                      feature_columns=self.feature_columns,
-                                                      features_generator=self.features_generator_evaluator,
-                                                      n_jobs=self.n_jobs)
+                self._data_train_evaluator = get_data(
+                    data_format=self.model_config_evaluator_dict['data_format'],
+                    path='%s/train_init.csv' % self.save_dir,
+                    pure_columns=self.pure_columns,
+                    mixture_columns=self.mixture_columns,
+                    target_columns=self.target_columns,
+                    feature_columns=self.feature_columns,
+                    features_generator=self.features_generator_evaluator,
+                    features_combination=self.model_config_evaluator_dict.get('features_combination'),
+                    graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+                    n_jobs=self.n_jobs)
             return self._data_train_evaluator
         else:
             return self.data_train_selector
@@ -328,14 +414,17 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
     def data_pool_evaluator(self):
         if self.yoked_learning:
             if not hasattr(self, '_data_pool_evaluator'):
-                self._data_pool_evaluator = get_data(data_format=self.model_config_evaluator_dict['data_format'],
-                                                     path='%s/pool_init.csv' % self.save_dir,
-                                                     pure_columns=self.pure_columns,
-                                                     mixture_columns=self.mixture_columns,
-                                                     target_columns=self.target_columns,
-                                                     feature_columns=self.feature_columns,
-                                                     features_generator=self.features_generator_evaluator,
-                                                     n_jobs=self.n_jobs)
+                self._data_pool_evaluator = get_data(
+                    data_format=self.model_config_evaluator_dict['data_format'],
+                    path='%s/pool_init.csv' % self.save_dir,
+                    pure_columns=self.pure_columns,
+                    mixture_columns=self.mixture_columns,
+                    target_columns=self.target_columns,
+                    feature_columns=self.feature_columns,
+                    features_generator=self.features_generator_evaluator,
+                    features_combination=self.model_config_evaluator_dict.get('features_combination'),
+                    graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+                    n_jobs=self.n_jobs)
             return self._data_pool_evaluator
         else:
             return self.data_pool_selector
@@ -343,44 +432,117 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
     @property
     def data_val_evaluator(self):
         if not hasattr(self, '_data_val_evaluator'):
-            self._data_val_evaluator = get_data(data_format=self.model_config_evaluator_dict['data_format'],
-                                                path='%s/val.csv' % self.save_dir,
-                                                pure_columns=self.pure_columns,
-                                                mixture_columns=self.mixture_columns,
-                                                target_columns=self.target_columns,
-                                                feature_columns=self.feature_columns,
-                                                features_generator=self.features_generator_evaluator,
-                                                n_jobs=self.n_jobs)
+            self._data_val_evaluator = get_data(
+                data_format=self.model_config_evaluator_dict['data_format'],
+                path='%s/val.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_evaluator,
+                features_combination=self.model_config_evaluator_dict.get('features_combination'),
+                graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+                n_jobs=self.n_jobs)
         return self._data_val_evaluator
 
     @property
+    def data_train_extra_evaluators(self):
+        if not hasattr(self, '_data_train_extra_evaluators'):
+            self._data_train_extra_evaluators = [get_data(
+                data_format=model_config['data_format'],
+                path='%s/train_init.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_extra_evaluators[i],
+                features_combination=model_config.get('features_combination'),
+                graph_kernel_type=model_config.get('graph_kernel_type'),
+                n_jobs=self.n_jobs) for i, model_config in enumerate(self.model_config_extra_evaluators_dict)]
+        return self._data_train_extra_evaluators
+
+    @property
+    def data_pool_extra_evaluators(self):
+        if not hasattr(self, '_data_pool_extra_evaluators'):
+            self._data_pool_extra_evaluators = [get_data(
+                data_format=model_config['data_format'],
+                path='%s/pool_init.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_extra_evaluators[i],
+                features_combination=model_config.get('features_combination'),
+                graph_kernel_type=model_config.get('graph_kernel_type'),
+                n_jobs=self.n_jobs) for i, model_config in enumerate(self.model_config_extra_evaluators_dict)]
+        return self._data_pool_extra_evaluators
+
+    @property
+    def data_val_extra_evaluators(self):
+        if not hasattr(self, '_data_val_extra_evaluators'):
+            self._data_val_extra_evaluators = [get_data(
+                data_format=model_config['data_format'],
+                path='%s/val.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_extra_evaluators[i],
+                features_combination=model_config.get('features_combination'),
+                graph_kernel_type=model_config.get('graph_kernel_type'),
+                n_jobs=self.n_jobs) for i, model_config in enumerate(self.model_config_extra_evaluators_dict)]
+        return self._data_val_extra_evaluators
+
+    @property
     def data_full_selector(self):
-        if not hasattr(self, '_data_full'):
-            self._data_full_selector = get_data(data_format=self.model_config_selector_dict['data_format'],
-                                                path=self.data_path,
-                                                pure_columns=self.pure_columns,
-                                                mixture_columns=self.mixture_columns,
-                                                target_columns=self.target_columns,
-                                                feature_columns=self.feature_columns,
-                                                features_generator=self.features_generator_selector,
-                                                n_jobs=self.n_jobs)
+        if not hasattr(self, '_data_full_selector'):
+            self._data_full_selector = get_data(
+                data_format=self.model_config_selector_dict['data_format'],
+                path=self.data_path,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_selector,
+                features_combination=self.model_config_selector_dict.get('features_combination'),
+                graph_kernel_type=self.model_config_selector_dict.get('graph_kernel_type'),
+                n_jobs=self.n_jobs)
         return self._data_full_selector
 
     @property
     def data_full_evaluator(self):
         if self.yoked_learning:
             if not hasattr(self, '_data_full_evaluator'):
-                self._data_full_evaluator = get_data(data_format=self.model_config_evaluator_dict['data_format'],
-                                                     path=self.data_path,
-                                                     pure_columns=self.pure_columns,
-                                                     mixture_columns=self.mixture_columns,
-                                                     target_columns=self.target_columns,
-                                                     feature_columns=self.feature_columns,
-                                                     features_generator=self.features_generator_evaluator,
-                                                     n_jobs=self.n_jobs)
+                self._data_full_evaluator = get_data(
+                    data_format=self.model_config_evaluator_dict['data_format'],
+                    path=self.data_path,
+                    pure_columns=self.pure_columns,
+                    mixture_columns=self.mixture_columns,
+                    target_columns=self.target_columns,
+                    feature_columns=self.feature_columns,
+                    features_generator=self.features_generator_evaluator,
+                    features_combination=self.model_config_evaluator_dict.get('features_combination'),
+                    graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+                    n_jobs=self.n_jobs)
             return self._data_full_evaluator
         else:
             return self.data_full_selector
+
+    @property
+    def data_full_extra_evaluators(self) -> List:
+        if not hasattr(self, '_data_full_extra_evaluators'):
+            self._data_full_extra_evaluators = [get_data(
+                data_format=model_config['data_format'],
+                path=self.data_path,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_extra_evaluators[i],
+                features_combination=model_config.get('features_combination'),
+                graph_kernel_type=model_config.get('graph_kernel_type'),
+                n_jobs=self.n_jobs) for i, model_config in enumerate(self.model_config_extra_evaluators_dict)]
+        return self._data_full_extra_evaluators
 
     @property
     def features_generator_selector(self) -> Optional[List[FeaturesGenerator]]:
@@ -410,12 +572,27 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
             return self.features_generator_selector
 
     @property
+    def features_generator_extra_evaluators(self) -> Optional[List[List[FeaturesGenerator]]]:
+        results = []
+        for model_config in self.model_config_extra_evaluators_dict:
+            fingerprints_class = model_config.get('fingerprints_class')
+            radius = model_config.get('radius')
+            num_bits = model_config.get('num_bits')
+            if fingerprints_class is None:
+                results.append(None)
+            else:
+                results.append([FeaturesGenerator(features_generator_name=fc,
+                                                  radius=radius,
+                                                  num_bits=num_bits) for fc in fingerprints_class])
+        return results
+
+    @property
     def kernel_selector(self):
         return get_kernel(
             graph_kernel_type=self.model_config_selector_dict.get('graph_kernel_type'),
             mgk_files=self.model_config_selector_dict.get('mgk_files'),
             features_kernel_type=self.model_config_selector_dict.get('features_kernel_type'),
-            rbf_length_scale=self.model_config_selector_dict.get('rbf_length_scale'),
+            features_hyperparameters=self.model_config_selector_dict.get('features_hyperparameters'),
             features_hyperparameters_file=self.model_config_selector_dict.get('features_hyperparameters_file'),
             dataset=self.data_full_selector,
             kernel_pkl_path='%s/kernel_selector.pkl' % self.save_dir,
@@ -428,7 +605,7 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
                 graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
                 mgk_files=self.model_config_evaluator_dict.get('mgk_files'),
                 features_kernel_type=self.model_config_evaluator_dict.get('features_kernel_type'),
-                rbf_length_scale=self.model_config_evaluator_dict.get('rbf_length_scale'),
+                features_hyperparameters=self.model_config_evaluator_dict.get('features_hyperparameters'),
                 features_hyperparameters_file=self.model_config_evaluator_dict.get('features_hyperparameters_file'),
                 dataset=self.data_full_evaluator,
                 kernel_pkl_path='%s/kernel_evaluator.pkl' % self.save_dir,
@@ -436,5 +613,34 @@ class ActiveLearningArgs(DatasetArgs, KernelArgs, ModelArgs):
         else:
             return self.kernel_selector
 
+    @property
+    def kernel_extra_evaluators(self) -> List:
+        if not hasattr(self, '_kernel_extra_evaluators'):
+            self._kernel_extra_evaluators = [get_kernel(
+                graph_kernel_type=model_config.get('graph_kernel_type'),
+                mgk_files=model_config.get('mgk_files'),
+                features_kernel_type=model_config.get('features_kernel_type'),
+                features_hyperparameters=model_config.get('features_hyperparameters'),
+                features_hyperparameters_file=model_config.get('features_hyperparameters_file'),
+                dataset=self.data_full_extra_evaluators[i],
+                kernel_pkl_path='%s/kernel_extra_evaluator_%d.pkl' % (self.save_dir, i),
+            ) for i, model_config in enumerate(self.model_config_extra_evaluators_dict)]
+        return self._kernel_extra_evaluators
+
     def process_args(self) -> None:
         super().process_args()
+        if self.stop_ratio is not None:
+            if self.stop_size is None:
+                self.stop_size = int(self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector)))
+            else:
+                self.stop_size = min(
+                    self.stop_size,
+                    int(self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector))))
+            assert self.stop_size >= 2
+
+
+class ActiveLearningContinueArgs(CommonArgs):
+    stop_ratio: float = None
+    """the ratio of molecules to stop the active learning."""
+    stop_size: int = None
+    """the number of molecules to stop the active learning."""

@@ -4,6 +4,7 @@
     "alpha": 0.01,
     "graph_kernel_type": "pre-computed",
     "mgk_files": [
-        "product-msnorm.json"
-    ]
+        "model_config/hyperparameters/product-msnorm.json"
+    ],
+    "uncertainty_type": "uncertainty"
 }

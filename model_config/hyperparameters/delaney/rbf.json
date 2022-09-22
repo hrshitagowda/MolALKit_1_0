@@ -1,0 +1,11 @@
+{
+ "features_hyperparameters": [
+ 6.58312
+ ],
+ "features_hyperparameters_bounds": [
+  [
+   0.1,
+   10.0
+  ]
+ ]
+}

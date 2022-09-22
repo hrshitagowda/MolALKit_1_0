@@ -1,9 +1,10 @@
 {
     "data_format": "fingerprints",
-    "model": "gaussian_process_classification",
+    "model": "support_vector_machine",
+    "C": 1.0,
     "fingerprints_class": [
         "rdkit_2d_normalized"
     ],
     "features_kernel_type": "rbf",
-    "length_scale": 0.2
+    "features_hyperparameters": 0.2
 }

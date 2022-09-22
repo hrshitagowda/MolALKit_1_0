@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import math
 from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
 import copy
 import os
@@ -19,6 +20,7 @@ def get_data(path: str,
              target_columns: List[str] = None,
              feature_columns: List[str] = None,
              features_generator: List[str] = None,
+             features_combination: Literal['concat', 'mean'] = None,
              n_jobs: int = 8):
     df = pd.read_csv(path)
     return Dataset.from_dataframe(df,
@@ -27,10 +29,26 @@ def get_data(path: str,
                                   target_columns=target_columns,
                                   feature_columns=feature_columns,
                                   features_generator=features_generator,
+                                  features_combination=features_combination,
                                   n_jobs=n_jobs)
 
 
-def split_data(smiles: List[str],
+def get_split_sizes(n_samples: int,
+                    split_ratio: List[float]):
+    if not np.isclose(sum(split_ratio), 1.0):
+        raise ValueError(f"Split split_ratio do not sum to 1. Received splits: {split_ratio}")
+    if any([size < 0 for size in split_ratio]):
+        raise ValueError(f"Split split_ratio must be non-negative. Received splits: {split_ratio}")
+
+    acc_ratio = np.cumsum([0.] + split_ratio)
+    split_sizes = [math.ceil(acc_ratio[i + 1] * n_samples) - math.ceil(acc_ratio[i] * n_samples)
+                   for i in range(len(acc_ratio) - 1)]
+    assert sum(split_sizes) == n_samples
+    return split_sizes
+
+
+def split_data(n_samples: int,
+               smiles: List[str] = None,
                targets: List = None,
                split_type: Literal['random', 'scaffold_order', 'scaffold_random', 'class'] = 'random',
                sizes: List[float] = (0.8, 0.2),
@@ -43,15 +61,12 @@ def split_data(smiles: List[str],
     else:
         info = print
         warn = print
-    if not np.isclose(sum(sizes), 1.0):
-        raise ValueError(f"Split sizes do not sum to 1. Received splits: {sizes}")
-    if any([size < 0 for size in sizes]):
-        raise ValueError(f"Split sizes must be non-negative. Received splits: {sizes}")
 
     random = Random(seed)
+    np.random.seed(seed)
     split_index = [[] for size in sizes]
     if split_type in ['scaffold_random', 'scaffold_order']:
-        index_size = [size * len(smiles) for size in sizes]
+        index_size = get_split_sizes(n_samples, split_ratio=sizes)
         mols = [Chem.MolFromSmiles(s) for s in smiles]
         scaffold_to_indices = scaffold_to_smiles(mols, use_indices=True)
         index_sets = sorted(list(scaffold_to_indices.values()),
@@ -65,30 +80,33 @@ def split_data(smiles: List[str],
                 random.shuffle(index)
             for i in index:
                 s_index = split_index[i]
-                if len(s_index) + len(index_set) < index_size[i]:
+                if len(s_index) + len(index_set) <= index_size[i]:
                     s_index += index_set
                     scaffold_count[i] += 1
                     break
-
+            else:
+                split_index[0] += index_set
         info(f'Total scaffolds = {len(scaffold_to_indices):,} | ')
         for i, count in enumerate(scaffold_count):
             info(f'split {i} scaffolds = {count:,} | ')
     elif split_type == 'random':
-        indices = list(range(len(smiles)))
+        indices = list(range(n_samples))
         random.shuffle(indices)
+        index_size = get_split_sizes(n_samples, split_ratio=sizes)
         end = 0
-        for i, size in enumerate(sizes):
+        for i, size in enumerate(index_size):
             start = end
-            end = start + int(size * len(smiles))
+            end = start + size
             split_index[i] = indices[start:end]
     elif split_type == 'class':
         class_list = np.unique(targets)
+        assert len(class_list) > 1
         num_class = len(class_list)
         if num_class > 10:
             warn('You are splitting a classification dataset with more than 10 classes.')
         if n_samples_per_class is None:
             assert len(sizes) == 2
-            n_samples_per_class = int(sizes[0] * len(smiles) / num_class)
+            n_samples_per_class = int(sizes[0] * n_samples / num_class)
             assert n_samples_per_class > 0
 
         for c in class_list:
@@ -97,9 +115,10 @@ def split_data(smiles: List[str],
                 if t == c:
                     index.append(i)
             split_index[0].extend(np.random.choice(index, n_samples_per_class, replace=False).tolist())
-        for i in range(len(smiles)):
+        for i in range(n_samples):
             if i not in split_index[0]:
                 split_index[1].append(i)
     else:
         raise ValueError(f'split_type "{split_type}" not supported.')
+    assert sum([len(i) for i in split_index]) == n_samples
     return split_index

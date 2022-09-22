@@ -78,7 +78,7 @@ class CommonArgs:
     """Path to model checkpoint (:code:`.pt` file)."""
     checkpoint_paths: List[str] = None
     """List of paths to model checkpoints (:code:`.pt` files)."""
-    no_cuda: bool = False
+    no_cuda: bool = True
     """Turn off cuda (i.e., use CPU instead of GPU)."""
     gpu: int = None
     """Which GPU to use."""

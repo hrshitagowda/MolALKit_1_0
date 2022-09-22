@@ -30,6 +30,7 @@ class MPNN:
                  num_tasks: int = 1,
                  multiclass_num_classes: int = 3,
                  features_generator=None,
+                 no_features_scaling: bool = False,
                  features_only: bool = False,
                  features_size: int = 0,
                  epochs: int = 30,
@@ -85,6 +86,7 @@ class MPNN:
         args.num_tasks = num_tasks
         args.multiclass_num_classes = multiclass_num_classes
         args.features_generator = features_generator
+        args.no_features_scaling = no_features_scaling
         args.features_only = features_only
         args.features_size = features_size
         args.epochs = epochs
@@ -108,6 +110,7 @@ class MPNN:
         args.seed = seed
         args.process_args()
         self.args = args
+        self.features_scaler = None
         self.logger = logger
 
     def fit(self, train_data):
@@ -127,9 +130,7 @@ class MPNN:
             args.train_class_sizes = train_class_sizes
 
         if args.features_scaling:
-            features_scaler = train_data.normalize_features(replace_nan_token=0)
-        else:
-            features_scaler = None
+            self.features_scaler = train_data.normalize_features(replace_nan_token=0)
 
         atom_descriptor_scaler = None
         bond_feature_scaler = None
@@ -200,7 +201,7 @@ class MPNN:
                 debug(f'Number of parameters = {param_count_all(model):,}')
 
             if args.cuda:
-                debug('Moving model to cuda')
+                print('Moving model to cuda')
             model = model.to(args.device)
 
             # Ensure that model is saved in correct location for evaluation if 0 epochs
@@ -236,6 +237,8 @@ class MPNN:
 
     def predict_uncertainty(self, pred_data):
         args = self.args
+        if args.features_scaling:
+            pred_data.normalize_features(self.features_scaler)
         pred_data_loader = MoleculeDataLoader(
             dataset=pred_data,
             batch_size=args.batch_size,
@@ -244,7 +247,8 @@ class MPNN:
         preds = predict(
             model=self.model,
             data_loader=pred_data_loader,
-            scaler=self.scaler
+            scaler=self.scaler,
+            return_unc_parameters=True
         )
         if self.args.dataset_type == 'classification':
             preds = np.asarray(preds)
@@ -255,10 +259,10 @@ class MPNN:
         elif self.args.dataset_type == 'regression':
             if self.model.loss_function == "mve":
                 preds, var = preds
-                return var
+                return np.array(var).ravel()
             elif self.args.loss_function == 'evidential':
                 preds, lambdas, alphas, betas = preds
-                return betas / (lambdas * (alphas - 1))
+                return (np.array(betas) / (np.array(lambdas) * (np.array(alphas) - 1))).ravel()
             else:
                 raise ValueError()
         else:
@@ -266,6 +270,8 @@ class MPNN:
 
     def predict_value(self, pred_data):
         args = self.args
+        if args.features_scaling:
+            pred_data.normalize_features(self.features_scaler)
         pred_data_loader = MoleculeDataLoader(
             dataset=pred_data,
             batch_size=args.batch_size,
@@ -279,10 +285,6 @@ class MPNN:
         if self.args.dataset_type in ['classification', 'multiclass']:
             return np.asarray(preds).ravel()
         elif self.args.dataset_type == 'regression':
-            if self.model.loss_function == "mve":
-                preds, var = preds
-            elif self.args.loss_function == 'evidential':
-                preds, lambdas, alphas, betas = preds
-            return preds
+            return np.asarray(preds).ravel()
         else:
             raise ValueError()

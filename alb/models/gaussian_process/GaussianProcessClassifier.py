@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-from sklearn.gaussian_process import GaussianProcessClassifier
+from mgktools.models.classification.gpc.gpc import GaussianProcessClassifier
 
 
 class GPClassifier(GaussianProcessClassifier):
@@ -15,9 +15,10 @@ class GPClassifier(GaussianProcessClassifier):
 
     def predict_uncertainty(self, pred_data):
         X = pred_data.X
-        p = self.predict_proba(X)
-        return 0.25 - np.var(p, axis=1)
+        preds = self.predict_proba(X).reshape(-1, 1)
+        preds = np.concatenate([preds, 1 - preds], axis=1)
+        return 0.25 - np.var(preds, axis=1)
 
     def predict_value(self, pred_data):
         X = pred_data.X
-        return super().predict_proba(X)[:, 1]
+        return super().predict_proba(X)
