@@ -201,6 +201,8 @@ class ActiveLearner:
             self.info('Pool set size = %i' % self.pool_size)
         if self.active_learning_traj_dict['training_size'][-1] != self.train_size:
             self.evaluate()
+        if self.save_cpt_stride:
+            self.save(path=self.save_dir, overwrite=True)
 
     def evaluate(self):
         self.info('evaluating model performance.')
