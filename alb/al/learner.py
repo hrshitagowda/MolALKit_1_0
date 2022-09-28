@@ -4,6 +4,7 @@ from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
 import os
 import json
 import pickle
+import shutil
 import pandas as pd
 import numpy as np
 from logging import Logger
@@ -195,7 +196,8 @@ class ActiveLearner:
                 self.evaluate()
             if self.save_cpt_stride is not None and n_iter % self.save_cpt_stride == 0:
                 self.n_iter = n_iter + 1
-                self.save(path=self.save_dir, overwrite=True)
+                self.save(path=self.save_dir, filename='al_temp.pkl', overwrite=True)
+                shutil.move(os.path.join(self.save_dir, 'al_temp.pkl'), os.path.join(self.save_dir, 'al.pkl'))
                 self.info('save checkpoint file %s/al.pkl' % self.save_dir)
             self.info('Training set size = %i' % self.train_size)
             self.info('Pool set size = %i' % self.pool_size)
