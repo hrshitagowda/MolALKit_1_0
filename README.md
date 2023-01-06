@@ -82,3 +82,8 @@ continue the active learning to 20%.
 ```commandline
 python3 ALContinue.py --save_dir test_al --stop_ratio 0.2
 ```
+
+## ReEvaluate a new model using existed active learning trajectory
+```commandline
+python3 ReEvaluate.py --data_public bace --save_dir test_al --model_config_evaluator model_config/RandomForest_RdkitNorm_Config --evaluator_id 0 --evaluate_stride 10 --metrics roc-auc mcc accuracy precision recall f1_score 
+```

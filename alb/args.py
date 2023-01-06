@@ -1,18 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import shutil
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 from tap import Tap
 from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
 from logging import Logger
 import json
+import math
 import pandas as pd
 import numpy as np
 from mgktools.features_mol import FeaturesGenerator
+from mgktools.data.split import data_split_index
 from alb.logging import create_logger
-from alb.data.utils import split_data
 from alb.utils import get_data, get_model, get_kernel
+
 
 Metric = Literal['roc-auc', 'accuracy', 'precision', 'recall', 'f1_score', 'mcc',
                  'rmse', 'mae', 'mse', 'r2', 'max']
@@ -36,7 +39,7 @@ class CommonArgs(Tap):
 
 
 class DatasetArgs(CommonArgs):
-    data_public: Literal['freesolv', 'delaney', 'clintox', 'bace', 'bbbp'] = None
+    data_public = None
     """Use public data sets."""
     data_path: str = None
     """the Path of input data CSV file."""
@@ -71,14 +74,12 @@ class DatasetArgs(CommonArgs):
     """
     Type of task.
     """
-    normalize_fingerprints: bool = False
-    """Nomralize the molecular features_mol."""
-    normalize_features_add: bool = False
-    """Nomralize the additonal features_mol."""
-    split_type: Literal['random', 'scaffold_random', 'scaffold_order'] = 'random'
+    split_type: Literal['random', 'scaffold_random', 'scaffold_order'] = None
     """Method of splitting the data into active learning/validation."""
     split_sizes: List[float] = None
     """Split proportions for active learning/validation sets."""
+    full_val: bool = False
+    """validate the performance of active learning on the full dataset."""
 
     def process_args(self) -> None:
         super().process_args()
@@ -107,11 +108,12 @@ class DatasetArgs(CommonArgs):
             self.pure_columns = ['smiles']
             self.target_columns = ['-logKd/Ki']
             self.dataset_type = 'regression'
-        elif self.data_public == 'clintox':
+        elif self.data_public in ['ld50_zhu', 'caco2_wang', 'solubility_aqsoldb', 'ppbr_az', 'vdss_lombardo',
+                                  'Half_Life_Obach', 'Clearance_Hepatocyte_AZ']:
             self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
-            self.pure_columns = ['smiles']
-            self.target_columns = ['FDA_APPROVED', 'CT_TOX']
-            self.dataset_type = 'classification'
+            self.pure_columns = ['Drug']
+            self.target_columns = ['Y']
+            self.dataset_type = 'regression'
         elif self.data_public == 'bbbp':
             self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
             self.pure_columns = ['smiles']
@@ -121,6 +123,20 @@ class DatasetArgs(CommonArgs):
             self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
             self.pure_columns = ['mol']
             self.target_columns = ['Class']
+            self.dataset_type = 'classification'
+        elif self.data_public == 'hiv':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['HIV_active']
+            self.dataset_type = 'classification'
+        elif self.data_public in ['ames', 'carcinogens_lagunin', 'dili', 'herg', 'skin', 'hia_hou', 'pgp_broccatelli',
+                                  'bioavailability_ma', 'clintox', 'bbb_martins', 'CYP1A2_Veith',
+                                  'CYP2C9_Substrate_CarbonMangels', 'CYP2C9_Veith', 'CYP2C19_Veith',
+                                  'CYP2D6_Substrate_CarbonMangels', 'CYP2D6_Veith', 'CYP3A4_Veith',
+                                  'CYP3A4_Substrate_CarbonMangels']:
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['Drug']
+            self.target_columns = ['Y']
             self.dataset_type = 'classification'
 
         if self.split_type == 'scaffold':
@@ -133,39 +149,81 @@ class DatasetArgs(CommonArgs):
         if self.data_path is not None:
             assert self.data_path_val is None and self.data_path_training is None and self.data_path_pool is None
             df = pd.read_csv(self.data_path)
-            al_index, val_index = split_data(n_samples=len(df),
-                                             smiles=df[self.pure_columns[0]] if self.pure_columns is not None else None,
-                                             # targets=df[self.target_columns[0]],
-                                             split_type=self.split_type,
-                                             sizes=self.split_sizes,
-                                             seed=self.seed,
-                                             logger=self.logger)
-            df[df.index.isin(val_index)].to_csv('%s/val.csv' % self.save_dir, index=False)
-            df_al = df[df.index.isin(al_index)]
-            if self.dataset_type == 'regression':
-                train_index, pool_index = split_data(
-                    n_samples=len(df_al),
-                    smiles=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
-                    split_type='random',
-                    sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
-                    seed=self.seed)
+            if self.full_val:
+                assert self.split_type == None
+                assert self.split_sizes == None
+                df.to_csv('%s/val.csv' % self.save_dir, index=False)
+                df_al = df
+                if self.dataset_type == 'regression':
+                    train_index, pool_index = data_split_index(
+                        n_samples=len(df_al),
+                        mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                        split_type='random',
+                        sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
+                        seed=self.seed)
+                else:
+                    train_index, pool_index = data_split_index(
+                        n_samples=len(df_al),
+                        mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                        targets=df_al[self.target_columns[0]],
+                        split_type='init_al',
+                        n_samples_per_class=1,
+                        seed=self.seed)
+                    if self.init_size > 2:
+                        train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
+                        _ = []
+                        for i in pool_index:
+                            if i not in train_index:
+                                _.append(i)
+                        pool_index = _
             else:
-                train_index, pool_index = split_data(
-                    n_samples=len(df_al),
-                    smiles=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
-                    targets=df_al[self.target_columns[0]],
-                    split_type='class',
-                    n_samples_per_class=1,
-                    seed=self.seed)
-                if self.init_size > 2:
-                    train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
-                    _ = []
-                    for i in pool_index:
-                        if i not in train_index:
-                            _.append(i)
-                    pool_index = _
+                al_index, val_index = data_split_index(
+                    n_samples=len(df),
+                    mols=df[self.pure_columns[0]] if self.pure_columns is not None else None,
+                    # targets=df[self.target_columns[0]],
+                    split_type=self.split_type,
+                    sizes=self.split_sizes,
+                    seed=self.seed,
+                    logger=self.logger)
+                df[df.index.isin(val_index)].to_csv('%s/val.csv' % self.save_dir, index=False)
+                df_al = df[df.index.isin(al_index)]
+                if self.init_size > len(df_al):
+                    self.init_size = len(df_al)
+                if self.dataset_type == 'regression':
+                    train_index, pool_index = data_split_index(
+                        n_samples=len(df_al),
+                        mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                        split_type='random',
+                        sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
+                        seed=self.seed)
+                else:
+                    train_index, pool_index = data_split_index(
+                        n_samples=len(df_al),
+                        mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                        targets=df_al[self.target_columns[0]],
+                        split_type='init_al',
+                        n_samples_per_class=1,
+                        seed=self.seed)
+                    if self.init_size > 2:
+                        train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
+                        _ = []
+                        for i in pool_index:
+                            if i not in train_index:
+                                _.append(i)
+                        pool_index = _
             df_al.iloc[train_index].to_csv('%s/train_init.csv' % self.save_dir, index=False)
             df_al.iloc[pool_index].to_csv('%s/pool_init.csv' % self.save_dir, index=False)
+        else:
+            assert self.data_path_training is not None, 'please provide input data'
+            assert self.data_path_pool is not None, 'please provide input data'
+            assert self.data_path_val is not None, 'please provide input data'
+            shutil.copyfile(self.data_path_training, '%s/train_init.csv' % self.save_dir)
+            shutil.copyfile(self.data_path_pool, '%s/pool_init.csv' % self.save_dir)
+            shutil.copyfile(self.data_path_val, '%s/val.csv' % self.save_dir)
+            pd.concat([pd.read_csv(f) for f in [self.data_path_training,
+                                                self.data_path_pool,
+                                                self.data_path_val]]).to_csv('%s/full.csv' % self.save_dir)
+            self.data_path = '%s/full.csv' % self.save_dir
 
 
 class ModelArgs(Tap):
@@ -631,11 +689,11 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
         super().process_args()
         if self.stop_ratio is not None:
             if self.stop_size is None:
-                self.stop_size = int(self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector)))
+                self.stop_size = math.ceil(self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector)))
             else:
                 self.stop_size = min(
                     self.stop_size,
-                    int(self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector))))
+                    math.ceil(self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector))))
             assert self.stop_size >= 2
 
 
@@ -644,3 +702,222 @@ class ActiveLearningContinueArgs(CommonArgs):
     """the ratio of molecules to stop the active learning."""
     stop_size: int = None
     """the number of molecules to stop the active learning."""
+
+
+class ReEvaluateArgs(CommonArgs):
+    model_config_evaluator: str
+    """config file contain all information of the machine learning model for performance evaluation."""
+    evaluator_id: int
+    """the output id of the evaluator"""
+    evaluate_stride: int = 100
+    """evaluate model performance on the validation set when the size of the training set is an integer multiple of the 
+    evaluation stride."""
+    metrics: List[Metric]
+    """the metrics to evaluate model performance."""
+
+    data_public = None
+    """Use public data sets."""
+    data_path: str = None
+    """the Path of input data CSV file."""
+    pure_columns: List[str] = None
+    """
+    For pure compounds.
+    Name of the columns containing single SMILES or InChI string.
+    """
+    mixture_columns: List[str] = None
+    """
+    For mixtures.
+    Name of the columns containing multiple SMILES or InChI string and 
+    corresponding concentration.
+    example: ['C', 0.5, 'CC', 0.3]
+    """
+    target_columns: List[str] = None
+    """
+    Name of the columns containing target values.
+    """
+    feature_columns: List[str] = None
+    """
+    Name of the columns containing additional features_mol such as temperature, 
+    pressuer.
+    """
+    dataset_type: Literal['regression', 'classification', 'multiclass'] = None
+    """
+    Type of task.
+    """
+    full_val: bool = False
+    """validate the performance of active learning on the full dataset."""
+
+    @property
+    def model_config_evaluator_dict(self) -> Dict:
+        return json.loads(open(self.model_config_evaluator).read())
+
+    @property
+    def model_evaluator(self):
+        if not hasattr(self, '_model_evaluator'):
+            self._model_evaluator = get_model(
+                data_format=self.model_config_evaluator_dict['data_format'],
+                dataset_type=self.dataset_type,
+                model=self.model_config_evaluator_dict.get('model'),
+                save_dir='%s/extra_evaluator_%d' % (self.save_dir, self.evaluator_id),
+                loss_function=self.model_config_evaluator_dict.get('loss_function'),
+                num_tasks=len(self.target_columns),
+                multiclass_num_classes=self.model_config_evaluator_dict.get('loss_function') or 3,
+                features_generator=self.features_generator_evaluator,
+                no_features_scaling=self.model_config_evaluator_dict.get('no_features_scaling') or False,
+                features_only=self.model_config_evaluator_dict.get('features_only') or False,
+                features_size=self.data_al_evaluator.features_size(),
+                epochs=self.model_config_evaluator_dict.get('epochs') or 30,
+                depth=self.model_config_evaluator_dict.get('depth') or 3,
+                hidden_size=self.model_config_evaluator_dict.get('hidden_size') or 300,
+                ffn_num_layers=self.model_config_evaluator_dict.get('ffn_num_layers') or 2,
+                ffn_hidden_size=self.model_config_evaluator_dict.get('ffn_hidden_size'),
+                dropout=self.model_config_evaluator_dict.get('dropout') or 0.0,
+                batch_size=self.model_config_evaluator_dict.get('batch_size') or 50,
+                ensemble_size=self.model_config_evaluator_dict.get('ensemble_size') or 1,
+                number_of_molecules=self.model_config_evaluator_dict.get('number_of_molecules') or 1,
+                mpn_shared=self.model_config_evaluator_dict.get('mpn_shared') or False,
+                atom_messages=self.model_config_evaluator_dict.get('atom_messages') or False,
+                undirected=self.model_config_evaluator_dict.get('undirected') or False,
+                class_balance=self.model_config_evaluator_dict.get('class_balance') or False,
+                checkpoint_dir=self.model_config_evaluator_dict.get('checkpoint_dir'),
+                checkpoint_frzn=self.model_config_evaluator_dict.get('checkpoint_frzn'),
+                frzn_ffn_layers=self.model_config_evaluator_dict.get('frzn_ffn_layers') or 0,
+                freeze_first_only=self.model_config_evaluator_dict.get('freeze_first_only') or False,
+                kernel=self.kernel_evaluator,
+                uncertainty_type=self.model_config_evaluator_dict.get('uncertainty_type'),
+                alpha=self.model_config_evaluator_dict.get('alpha'),
+                n_jobs=self.n_jobs,
+                seed=self.seed,
+                logger=self.logger
+            )
+        return self._model_evaluator
+
+    @property
+    def data_al_evaluator(self):
+        if not hasattr(self, '_data_al_evaluator'):
+            self._data_al_evaluator = get_data(
+                data_format=self.model_config_evaluator_dict['data_format'],
+                path='%s/train_al.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_evaluator,
+                features_combination=self.model_config_evaluator_dict.get('features_combination'),
+                graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+                n_jobs=self.n_jobs)
+        return self._data_al_evaluator
+
+    @property
+    def data_val_evaluator(self):
+        if not hasattr(self, '_data_val_evaluator'):
+            self._data_val_evaluator = get_data(
+                data_format=self.model_config_evaluator_dict['data_format'],
+                path='%s/val.csv' % self.save_dir,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_evaluator,
+                features_combination=self.model_config_evaluator_dict.get('features_combination'),
+                graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+                n_jobs=self.n_jobs)
+        return self._data_val_evaluator
+
+    @property
+    def data_full_evaluator(self):
+        if not hasattr(self, '_data_full_evaluator'):
+            self._data_full_evaluator = get_data(
+                data_format=self.model_config_evaluator_dict['data_format'],
+                path=self.data_path,
+                pure_columns=self.pure_columns,
+                mixture_columns=self.mixture_columns,
+                target_columns=self.target_columns,
+                feature_columns=self.feature_columns,
+                features_generator=self.features_generator_evaluator,
+                features_combination=self.model_config_evaluator_dict.get('features_combination'),
+                graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+                n_jobs=self.n_jobs)
+        return self._data_full_evaluator
+
+    @property
+    def features_generator_evaluator(self) -> Optional[List[FeaturesGenerator]]:
+        fingerprints_class = self.model_config_evaluator_dict.get('fingerprints_class')
+        radius = self.model_config_evaluator_dict.get('radius')
+        num_bits = self.model_config_evaluator_dict.get('num_bits')
+        if fingerprints_class is None:
+            return None
+        else:
+            return [FeaturesGenerator(features_generator_name=fc,
+                                      radius=radius,
+                                      num_bits=num_bits) for fc in fingerprints_class]
+
+    @property
+    def kernel_evaluator(self):
+        return get_kernel(
+            graph_kernel_type=self.model_config_evaluator_dict.get('graph_kernel_type'),
+            mgk_files=self.model_config_evaluator_dict.get('mgk_files'),
+            features_kernel_type=self.model_config_evaluator_dict.get('features_kernel_type'),
+            features_hyperparameters=self.model_config_evaluator_dict.get('features_hyperparameters'),
+            features_hyperparameters_file=self.model_config_evaluator_dict.get('features_hyperparameters_file'),
+            dataset=self.data_full_evaluator,
+            kernel_pkl_path='%s/kernel_extra_evaluator_%d.pkl' % (self.save_dir, self.evaluator_id),
+        )
+
+    def process_args(self) -> None:
+        super().process_args()
+        if self.data_public == 'freesolv':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['freesolv']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'delaney':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['logSolubility']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'lipo':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['lipo']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'pdbbind_refined':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['-logKd/Ki']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'pdbbind_full':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['-logKd/Ki']
+            self.dataset_type = 'regression'
+        elif self.data_public in ['ld50_zhu', 'caco2_wang', 'solubility_aqsoldb', 'ppbr_az', 'vdss_lombardo',
+                                  'Half_Life_Obach', 'Clearance_Hepatocyte_AZ']:
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['Drug']
+            self.target_columns = ['Y']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'bbbp':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['p_np']
+            self.dataset_type = 'classification'
+        elif self.data_public == 'bace':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['mol']
+            self.target_columns = ['Class']
+            self.dataset_type = 'classification'
+        elif self.data_public == 'hiv':
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['smiles']
+            self.target_columns = ['HIV_active']
+            self.dataset_type = 'classification'
+        elif self.data_public in ['ames', 'carcinogens_lagunin', 'dili', 'herg', 'skin', 'hia_hou', 'pgp_broccatelli',
+                                  'bioavailability_ma', 'clintox', 'bbb_martins', 'CYP1A2_Veith',
+                                  'CYP2C9_Substrate_CarbonMangels', 'CYP2C9_Veith', 'CYP2C19_Veith',
+                                  'CYP2D6_Substrate_CarbonMangels', 'CYP2D6_Veith', 'CYP3A4_Veith',
+                                  'CYP3A4_Substrate_CarbonMangels']:
+            self.data_path = os.path.join(CWD, 'data', '%s.csv' % self.data_public)
+            self.pure_columns = ['Drug']
+            self.target_columns = ['Y']
+            self.dataset_type = 'classification'

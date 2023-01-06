@@ -26,10 +26,10 @@ def create_logger(name: str, save_dir: str = None, quiet: bool = False) -> loggi
 
         fh_v = logging.FileHandler(os.path.join(save_dir, '%s_verbose.log' % name))
         fh_v.setLevel(logging.DEBUG)
-        fh_q = logging.FileHandler(os.path.join(save_dir, '%s_quiet.log' % name))
-        fh_q.setLevel(logging.INFO)
+        # fh_q = logging.FileHandler(os.path.join(save_dir, '%s_quiet.log' % name))
+        # fh_q.setLevel(logging.INFO)
 
         logger.addHandler(fh_v)
-        logger.addHandler(fh_q)
+        # logger.addHandler(fh_q)
 
     return logger

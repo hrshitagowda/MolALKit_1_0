@@ -5,5 +5,5 @@
         "rdkit_2d_normalized"
     ],
     "features_kernel_type": "rbf",
-    "features_hyperparameters": 0.2
+    "features_hyperparameters": 10.0
 }

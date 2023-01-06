@@ -68,6 +68,8 @@ class ActiveLearner:
                  dataset_train_selector,
                  dataset_pool_selector,
                  dataset_val_evaluator,
+                 df_train,
+                 df_pool,
                  batch_size: int = 1,
                  batch_algorithm: Literal['nlargest', 'cluster'] = 'nlargest',
                  stop_size=None,
@@ -105,6 +107,10 @@ class ActiveLearner:
         self.dataset_train_extra_evaluators = dataset_train_extra_evaluators or []
         self.dataset_pool_extra_evaluators = dataset_pool_extra_evaluators or []
         self.dataset_val_extra_evaluators = dataset_val_extra_evaluators or []
+
+        self.df_train = df_train
+        self.df_train['acquisition'] = 'none'
+        self.df_pool = df_pool
 
         self.evaluate_stride = evaluate_stride
         self.extra_evaluators_only = extra_evaluators_only
@@ -189,11 +195,11 @@ class ActiveLearner:
             self.info('Start an new iteration of active learning: %d.' % n_iter)
             # training
             self.model_selector.fit(self.dataset_train_selector)
-            # add sample
-            self.add_samples()
             # evaluate
             if self.evaluate_stride is not None and self.train_size % self.evaluate_stride == 0:
                 self.evaluate()
+            # add sample
+            self.add_samples()
             if self.save_cpt_stride is not None and n_iter % self.save_cpt_stride == 0:
                 self.n_iter = n_iter + 1
                 self.save(path=self.save_dir, filename='al_temp.pkl', overwrite=True)
@@ -201,7 +207,9 @@ class ActiveLearner:
                 self.info('save checkpoint file %s/al.pkl' % self.save_dir)
             self.info('Training set size = %i' % self.train_size)
             self.info('Pool set size = %i' % self.pool_size)
-        if self.active_learning_traj_dict['training_size'][-1] != self.train_size:
+        if len(self.active_learning_traj_dict['training_size']) == 0 or \
+                self.active_learning_traj_dict['training_size'][-1] != self.train_size:
+            self.model_selector.fit(self.dataset_train_selector)
             self.evaluate()
         if self.save_cpt_stride:
             self.save(path=self.save_dir, overwrite=True)
@@ -260,6 +268,16 @@ class ActiveLearner:
                 selected_idx = np.random.choice(pool_idx, self.batch_size, replace=False).tolist()
         else:
             raise ValueError(f'unknown learning type: {self.learning_type}')
+
+        df_add = self.df_pool[self.df_pool.index.isin(selected_idx)].reset_index().drop(columns=['index'])
+        if hasattr(self, 'acquisition'):
+            df_add['acquisition'] = self.acquisition
+        else:
+            df_add['acquisition'] = 'none'
+        self.df_train = pd.concat([self.df_train, df_add]).reset_index().drop(columns=['index'])
+        self.df_pool = self.df_pool[~self.df_pool.index.isin(selected_idx)].reset_index().drop(columns=['index'])
+        self.df_train.to_csv('%s/train_al.csv' % self.save_dir, index=False)
+        self.df_pool.to_csv('%s/pool_al.csv' % self.save_dir, index=False)
 
         for i in sorted(selected_idx, reverse=True):
             self.dataset_train_selector.data.append(self.dataset_pool_selector.data.pop(i))
@@ -344,7 +362,7 @@ class ActiveLearner:
         store = pickle.load(open(f_al, 'rb'))
         input = {}
         for key in ['save_dir', 'dataset_type', 'metrics', 'learning_type', 'model_selector', 'dataset_train_selector',
-                    'dataset_pool_selector', 'dataset_val_evaluator']:
+                    'dataset_pool_selector', 'dataset_val_evaluator', 'df_train', 'df_pool']:
             input[key] = store[key]
         dataset = cls(**input)
         dataset.__dict__.update(**store)

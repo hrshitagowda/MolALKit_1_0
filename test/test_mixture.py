@@ -26,9 +26,10 @@ from ActiveLearning import main
     ('gpc-mgk', 'GaussianProcessClassification_MarginalizedGraphKernel2_Config'),
     ('gpc-mgk-dpk-morgan', 'GaussianProcessClassification_MarginalizedGraphKernel2_DotProductKernel_Morgan_Config'),
     ('gpc-mgk-rbf-rdkit', 'GaussianProcessClassification_MarginalizedGraphKernel2_RBFKernel_RdkitNorm_Config'),
-    ('mlp-morgan', 'MLP_BinaryClassification_Morgan_Config'),
+    ('mlp-morgan', 'MLP_Morgan_BinaryClassification_Config'),
+    ('mlp-rdkit', 'MLP_RdkitNorm_BinaryClassification_Config'),
     ('dmpnn', 'DMPNN_BinaryClassification_Config'),
-    ('dmpnn-rdkit', 'DMPNN_RDKIT_BinaryClassification_Config'),
+    ('dmpnn-rdkit', 'DMPNN_RdkitNorm_BinaryClassification_Config'),
 ])
 @pytest.mark.parametrize('learning_type', ['explorative'])
 @pytest.mark.parametrize('split_type', ['random'])

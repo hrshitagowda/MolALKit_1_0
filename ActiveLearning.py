@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os.path
 import time
+import pandas as pd
 from alb.args import ActiveLearningArgs
 from alb.al.learner import ActiveLearner
 
@@ -28,6 +29,8 @@ def main(args: ActiveLearningArgs) -> ActiveLearner:
                                        dataset_train_selector=args.data_train_selector,
                                        dataset_pool_selector=args.data_pool_selector,
                                        dataset_val_evaluator=args.data_val_evaluator,
+                                       df_train=pd.read_csv('%s/train_init.csv' % args.save_dir),
+                                       df_pool=pd.read_csv('%s/pool_init.csv' % args.save_dir),
                                        dataset_train_evaluator=args.data_train_evaluator,
                                        dataset_pool_evaluator=args.data_pool_evaluator,
                                        model_extra_evaluators=args.model_extra_evaluators,
@@ -51,6 +54,8 @@ def main(args: ActiveLearningArgs) -> ActiveLearner:
                                        dataset_train_selector=args.data_train_selector,
                                        dataset_pool_selector=args.data_pool_selector,
                                        dataset_val_evaluator=args.data_val_evaluator,
+                                       df_train=pd.read_csv('%s/train_init.csv' % args.save_dir),
+                                       df_pool=pd.read_csv('%s/pool_init.csv' % args.save_dir),
                                        dataset_train_evaluator=None,
                                        dataset_pool_evaluator=None,
                                        model_extra_evaluators=args.model_extra_evaluators,

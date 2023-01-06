@@ -13,6 +13,6 @@
     "num_bits": 1024,
     "features_kernel_type": "rbf",
     "features_hyperparameters": [
-        0.5
+        1.0
     ]
 }
