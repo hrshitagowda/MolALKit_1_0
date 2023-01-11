@@ -24,6 +24,7 @@ def main(args: ActiveLearningArgs) -> ActiveLearner:
                                        learning_type=args.learning_type,
                                        batch_size=args.batch_size,
                                        stop_size=args.stop_size,
+                                       forget_size=args.forget_size,
                                        model_selector=args.model_selector,
                                        model_evaluator=args.model_evaluator,
                                        dataset_train_selector=args.data_train_selector,
@@ -49,6 +50,7 @@ def main(args: ActiveLearningArgs) -> ActiveLearner:
                                        learning_type=args.learning_type,
                                        batch_size=args.batch_size,
                                        stop_size=args.stop_size,
+                                       forget_size=args.forget_size,
                                        model_selector=args.model_selector,
                                        model_evaluator=None,
                                        dataset_train_selector=args.data_train_selector,
@@ -67,7 +69,7 @@ def main(args: ActiveLearningArgs) -> ActiveLearner:
                                        save_cpt_stride=args.save_cpt_stride,
                                        logger=args.logger,
                                        seed=args.seed)
-    active_learner.run()
+    active_learner.run(n_iter=args.n_iter)
     end = time.time()
     args.logger.info('total time: %d s\n\n\n' % (end - start))
     return active_learner

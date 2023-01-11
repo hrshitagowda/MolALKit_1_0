@@ -264,9 +264,9 @@ class MPNN:
                 preds, lambdas, alphas, betas = preds
                 return (np.array(betas) / (np.array(lambdas) * (np.array(alphas) - 1))).ravel()
             else:
-                raise ValueError()
+                raise ValueError
         else:
-            raise ValueError()
+            raise ValueError
 
     def predict_value(self, pred_data):
         args = self.args

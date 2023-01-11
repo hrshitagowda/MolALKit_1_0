@@ -286,10 +286,14 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     """the ratio of molecules to stop the active learning."""
     stop_size: int = None
     """the number of molecules to stop the active learning."""
+    forget_size: int = None
+    """the number of molecules start forgetting data."""
     save_cpt_stride: int = None
     """save checkpoint file every no. steps of active learning iteration."""
     load_checkpoint: bool = False
     """load"""
+    n_iter: int = None
+    """number of iterations of active learning to performed, None means stop until all data are selected."""
 
     @property
     def model_selector(self):

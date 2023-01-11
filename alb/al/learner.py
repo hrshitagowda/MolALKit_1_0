@@ -75,6 +75,7 @@ class ActiveLearner:
                  stop_size=None,
                  kernel=None,
                  cluster_size=None,
+                 forget_size=None,
                  model_evaluator=None,
                  dataset_train_evaluator=None,
                  dataset_pool_evaluator=None,
@@ -96,6 +97,7 @@ class ActiveLearner:
         self.stop_size = stop_size
         self.kernel = kernel
         self.cluster_size = cluster_size
+        self.forget_size = forget_size
         self.model_selector = model_selector
         self.model_evaluator_ = model_evaluator
         self.dataset_train_selector = dataset_train_selector
@@ -122,11 +124,17 @@ class ActiveLearner:
         else:
             self.info = print
         self.n_iter = 0
+        self.n_forgotten_data = 0
+        self.selected_data = dataset_train_selector.repr.ravel().tolist()
 
     @property
     def active_learning_traj_dict(self) -> Dict:
         if not hasattr(self, '_active_learning_traj_dict'):
-            self._active_learning_traj_dict = {'training_size': [], 'acquisition': []}
+            self._active_learning_traj_dict = {'iteration': [],
+                                               'selected_data': [],
+                                               'forgotten_data': [],
+                                               'training_size': [],
+                                               'acquisition': []}
             for metric in self.metrics:
                 self._active_learning_traj_dict[metric] = []
         return self._active_learning_traj_dict
@@ -134,8 +142,12 @@ class ActiveLearner:
     @property
     def active_learning_traj_extra_dict(self) -> List[Dict]:
         if not hasattr(self, '_active_learning_traj_extra_dict'):
-            self._active_learning_traj_extra_dict = \
-                [{'training_size': []} for i in range(len(self.model_extra_evaluators))]
+            self._active_learning_traj_extra_dict = [{'iteration': [],
+                                                      'selected_data': [],
+                                                      'forgotten_data': [],
+                                                      'training_size': [],
+                                                      'acquisition': []} for i in
+                                                     range(len(self.model_extra_evaluators))]
             for metric in self.metrics:
                 for alt in self._active_learning_traj_extra_dict:
                     alt[metric] = []
@@ -186,13 +198,15 @@ class ActiveLearner:
         else:
             return False
 
-    def run(self):
+    def run(self, n_iter: int = None):
         self.info('start active learning with training set size = %d' % self.train_size)
         self.info('pool set size = %d' % self.pool_size)
-        for n_iter in range(self.n_iter, self.n_iter + self.pool_size):
+        if n_iter is None:
+            n_iter = 10000000
+        for i in range(n_iter):
             if self.termination():
                 break
-            self.info('Start an new iteration of active learning: %d.' % n_iter)
+            self.info('Start an new iteration of active learning: %d.' % self.n_iter)
             # training
             self.model_selector.fit(self.dataset_train_selector)
             # evaluate
@@ -200,13 +214,18 @@ class ActiveLearner:
                 self.evaluate()
             # add sample
             self.add_samples()
-            if self.save_cpt_stride is not None and n_iter % self.save_cpt_stride == 0:
-                self.n_iter = n_iter + 1
+            # forget sample
+            self.forget_samples()
+            # save checkpoint file
+            if self.save_cpt_stride is not None and i % self.save_cpt_stride == 0:
                 self.save(path=self.save_dir, filename='al_temp.pkl', overwrite=True)
                 shutil.move(os.path.join(self.save_dir, 'al_temp.pkl'), os.path.join(self.save_dir, 'al.pkl'))
                 self.info('save checkpoint file %s/al.pkl' % self.save_dir)
+
+            self.n_iter += 1
             self.info('Training set size = %i' % self.train_size)
             self.info('Pool set size = %i' % self.pool_size)
+
         if len(self.active_learning_traj_dict['training_size']) == 0 or \
                 self.active_learning_traj_dict['training_size'][-1] != self.train_size:
             self.model_selector.fit(self.dataset_train_selector)
@@ -221,6 +240,9 @@ class ActiveLearner:
                 self.model_evaluator.fit(self.dataset_train_evaluator)
             y_pred = self.model_evaluator.predict_value(self.dataset_val_evaluator)
 
+            self.active_learning_traj_dict['iteration'].append(self.n_iter)
+            self.active_learning_traj_dict['selected_data'].append(len(self.selected_data))
+            self.active_learning_traj_dict['forgotten_data'].append(self.n_forgotten_data)
             self.active_learning_traj_dict['training_size'].append(self.train_size)
             if hasattr(self, 'acquisition'):
                 self.active_learning_traj_dict['acquisition'].append(json.dumps(self.acquisition))
@@ -238,7 +260,14 @@ class ActiveLearner:
         for i, model in enumerate(self.model_extra_evaluators):
             model.fit(self.dataset_train_extra_evaluators[i])
             y_pred = model.predict_value(self.dataset_val_extra_evaluators[i])
+            self.active_learning_traj_extra_dict[i]['iteration'].append(self.n_iter)
+            self.active_learning_traj_extra_dict[i]['selected_data'].append(len(self.selected_data))
+            self.active_learning_traj_extra_dict[i]['forgotten_data'].append(self.n_forgotten_data)
             self.active_learning_traj_extra_dict[i]['training_size'].append(self.train_size)
+            if hasattr(self, 'acquisition'):
+                self.active_learning_traj_extra_dict[i]['acquisition'].append(json.dumps(self.acquisition))
+            else:
+                self.active_learning_traj_extra_dict[i]['acquisition'].append('none')
             for metric in self.metrics:
                 metric_value = eval_metric_func(self.dataset_val_extra_evaluators[i].y, y_pred, metric=metric)
                 self.active_learning_traj_extra_dict[i][metric].append(metric_value)
@@ -281,10 +310,26 @@ class ActiveLearner:
 
         for i in sorted(selected_idx, reverse=True):
             self.dataset_train_selector.data.append(self.dataset_pool_selector.data.pop(i))
+
+            repr = self.dataset_train_selector.repr.ravel()[-1]
+            if repr not in self.selected_data:
+                self.selected_data.append(repr)
+
             if self.yoked_learning:
                 self.dataset_train_evaluator.data.append(self.dataset_pool_evaluator.data.pop(i))
             for j in range(len(self.model_extra_evaluators)):
                 self.dataset_train_extra_evaluators[j].data.append(self.dataset_pool_extra_evaluators[j].data.pop(i))
+
+    def forget_samples(self):
+        print(len(self.dataset_train_selector), self.forget_size)
+        if self.forget_size is None:
+            return
+        elif len(self.dataset_train_selector) > self.forget_size:
+            self.dataset_pool_selector.data.append(self.dataset_train_selector.data.pop(0))
+            if self.yoked_learning:
+                self.dataset_pool_evaluator.data.append(self.dataset_train_evaluator.data.pop(0))
+            for j in range(len(self.model_extra_evaluators)):
+                self.dataset_pool_extra_evaluators[j].data.append(self.dataset_train_extra_evaluators[j].data.pop(0))
 
     def get_selected_idx(self,
                          acquisition_values: List[float],
