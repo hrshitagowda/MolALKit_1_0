@@ -68,7 +68,7 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
 
 def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               dataset_type: Literal['regression', 'classification', 'multiclass'],
-              model: Literal['random_forest', 'gaussian_process', 'support_vector_machine'],
+              model: Literal['random_forest', 'naive_bayes', 'gaussian_process', 'support_vector_machine'],
               save_dir: str = None,
               loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid',
                                      'wasserstein', 'mve', 'evidential', 'dirichlet'] = None,
@@ -112,7 +112,11 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
                 return RFRegressor(random_state=seed)
             else:
                 from alb.models.random_forest.RandomForestClassifier import RFClassifier
-                return RFClassifier(random_state=seed)
+                return RFClassifier(random_state=seed, oob_score=True)
+        elif model == 'naive_bayes':
+            assert dataset_type == 'classification'
+            from alb.models.naive_bayes.NaiveBayesClassifier import NBClassifier
+            return NBClassifier()
         elif model == 'logistic_regression':
             assert dataset_type == 'classification'
             from alb.models.logistic_regression.LogisticRegression import LogisticRegressor

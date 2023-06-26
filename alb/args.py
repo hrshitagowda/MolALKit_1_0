@@ -80,6 +80,8 @@ class DatasetArgs(CommonArgs):
     """Split proportions for active learning/validation sets."""
     full_val: bool = False
     """validate the performance of active learning on the full dataset."""
+    error_rate: int = None
+    """% of error to be introduced to the training set"""
 
     def process_args(self) -> None:
         super().process_args()
@@ -197,6 +199,20 @@ class DatasetArgs(CommonArgs):
                         sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
                         seed=self.seed)
                 else:
+                #classification task training set, split into train and pool sets
+                    #introduce error to training set
+                    if self.error_rate != 0 and self.error_rate is not None:
+                        #numpy array of target values
+                        targets_error=df_al[self.target_columns[0]].to_numpy(dtype=int,copy=True)
+                        #get random indices for introducing error
+                        n_train_samples=len(targets_error)
+                        #generate same indices for introducing error
+                        np.random.seed(self.seed)
+                        error_index = np.random.choice(n_train_samples,int(self.error_rate/100*n_train_samples),replace=False)
+                        #flip label
+                        targets_error[error_index] ^= 1
+                        #update target values with error
+                        df_al[self.target_columns[0]] = targets_error
                     train_index, pool_index = data_split_index(
                         n_samples=len(df_al),
                         mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
@@ -286,8 +302,16 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     """the ratio of molecules to stop the active learning."""
     stop_size: int = None
     """the number of molecules to stop the active learning."""
+    forget_iter: str = None
+    """when to start forgetting (find_iter, set_iter)."""
+    forget_protocol: str = None
+    """protocol to use (forget_first, oob_least_uncertain (RF only), oob_most_uncertain (RF only), forget_random)."""
     forget_size: int = None
-    """the number of molecules start forgetting data."""
+    """the number of moleculesin the training set to start forgetting data at (use with set_iter)."""
+    forget_percent: int = None
+    """the percent of the full training set to start forgetting data (use with set_iter)."""
+    error_rate: int = None
+    """the percent of the training set that will be affected by error."""
     save_cpt_stride: int = None
     """save checkpoint file every no. steps of active learning iteration."""
     load_checkpoint: bool = False
