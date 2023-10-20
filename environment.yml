@@ -1,4 +1,4 @@
-name: alb
+name: molalkit
 
 channels:
   - conda-forge
@@ -6,7 +6,7 @@ channels:
   - rdkit
 
 dependencies:
-  - python>=3.8
+  - python==3.10
   - pip>=20.0.2
   - rdkit>=2020.03.1.0
   - scikit-learn>=1.1.1

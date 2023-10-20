@@ -5,7 +5,7 @@ import os
 CWD = os.path.dirname(os.path.abspath(__file__))
 import sys
 sys.path.append('%s/..' % CWD)
-from alb.args import ActiveLearningArgs, ActiveLearningContinueArgs
+from molalkit.args import ActiveLearningArgs, ActiveLearningContinueArgs
 
 
 @pytest.mark.parametrize('dataset', [
@@ -42,7 +42,7 @@ def test_ActiveLearning_PureCompound_Regression_Continue(dataset, modelset, lear
                     '--stop_ratio', '0.5'
                 ]
     args = ActiveLearningArgs().parse_args(arguments)
-    from ActiveLearning import main
+    from scripts.ActiveLearning import main
     active_learner = main(args)
     assert int((active_learner.train_size + active_learner.pool_size) * 0.5) == active_learner.train_size
     # continue run
@@ -51,7 +51,7 @@ def test_ActiveLearning_PureCompound_Regression_Continue(dataset, modelset, lear
                     '--stop_ratio', '0.8'
                 ]
     args = ActiveLearningContinueArgs().parse_args(arguments)
-    from ALContinue import main
+    from scripts.ALContinue import main
     active_learner = main(args)
     assert int((active_learner.train_size + active_learner.pool_size) * 0.8) == active_learner.train_size
 
@@ -84,7 +84,7 @@ def test_ActiveLearning_PureCompound_Regression_1_Continue(dataset, modelset, le
                     '--stop_ratio', '0.5'
                 ]
     args = ActiveLearningArgs().parse_args(arguments)
-    from ActiveLearning import main
+    from scripts.ActiveLearning import main
     active_learner = main(args)
     assert int((active_learner.train_size + active_learner.pool_size) * 0.5) == active_learner.train_size
     # continue run
@@ -93,6 +93,6 @@ def test_ActiveLearning_PureCompound_Regression_1_Continue(dataset, modelset, le
                     '--stop_ratio', '0.8'
                 ]
     args = ActiveLearningContinueArgs().parse_args(arguments)
-    from ALContinue import main
+    from scripts.ALContinue import main
     active_learner = main(args)
     assert int((active_learner.train_size + active_learner.pool_size) * 0.8) == active_learner.train_size

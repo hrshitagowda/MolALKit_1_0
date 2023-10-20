@@ -4,6 +4,6 @@
     "C": 1.0,
     "graph_kernel_type": "pre-computed",
     "mgk_files": [
-        "model_config/hyperparameters/product-msnorm.json"
+        "../model_config/hyperparameters/product-msnorm.json"
     ]
 }

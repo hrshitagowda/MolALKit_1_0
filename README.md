@@ -1,19 +1,25 @@
 
 ![ActiveLearningBenchmark2](https://user-images.githubusercontent.com/127516906/230432117-43e7f5b6-db93-4688-a2de-13d55fe3b0e9.png)
 
-# ActiveLearningBenchmark
-Benchmarking for molecular active learning.
+# MolALKit: A Toolkit for Active Learning of molecular data.
+This package is a toolkit for active learning of molecular data.
 
 ## Installation
 ```commandline
 conda env create -f environment.yml
-conda activate alb
+conda activate molalkit
 ```
-[GPU-enabled PyTorch](https://pytorch.org/get-started/locally/).
-```
-conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge
-```
-## Usage: BACE and freesolv datasets as examples
+
+## Usage
+[scripts](https://github.com/RekerLab/MolAlKit/tree/main/scripts) contains executable files to perform 
+active learning jobs.
+
+[examples](https://github.com/RekerLab/MolAlKit/tree/main/examples) contains multiple examples to use this package.
+
+[model_config](https://github.com/RekerLab/MolAlKit/tree/main/model_config) contains the config files of machine 
+learning models.
+
+
 ### Models
 #### Random Forest with Morgan fingerprints
 ```commandline

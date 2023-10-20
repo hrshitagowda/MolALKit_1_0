@@ -3,7 +3,7 @@
     "model": "gaussian_process_classification",
     "graph_kernel_type": "pre-computed",
     "mgk_files": [
-        "model_config/hyperparameters/product-msnorm.json",
-        "model_config/hyperparameters/product-msnorm.json"
+        "../model_config/hyperparameters/product-msnorm.json",
+        "../model_config/hyperparameters/product-msnorm.json"
     ]
 }
