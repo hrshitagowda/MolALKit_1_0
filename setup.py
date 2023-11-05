@@ -29,14 +29,14 @@ setuptools.setup(
     ],
     entry_points={
         'console_scripts': [
-            'molalkit_run=molalkit.al:run',
+            'molalkit_run=molalkit.al.run:run',
         ]
     },
     author='Yan Xiang',
     author_email='yan.xiang@duke.edu',
-    description='Active Learning Benchmark.',
+    description='MolALKit: A Toolkit for Active Learning in Molecular Data.',
     long_description=long_description,
-    url='https://github.com/RekerLab/ActiveLearningBenchmark',
+    url='https://github.com/RekerLab/MolALKit',
     packages=setuptools.find_packages(),
     classifiers=[
         'Programming Language :: Python',
@@ -44,4 +44,5 @@ setuptools.setup(
         'Operating System :: OS Independent',
     ],
     include_package_data=True,
+    package_data={'': ['data/datasets/*.csv', 'models/configs/*Config']}
 )
