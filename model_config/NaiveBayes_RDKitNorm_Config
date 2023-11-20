@@ -1,0 +1,7 @@
+{
+    "data_format": "fingerprints",
+    "model": "naive_bayes",
+    "fingerprints_class": [
+        "rdkit_2d_normalized"
+    ]
+}

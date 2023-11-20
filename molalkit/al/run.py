@@ -7,7 +7,7 @@ from molalkit.args import ActiveLearningArgs, ActiveLearningContinueArgs, ReEval
 from molalkit.al.learner import ActiveLearner
 
 
-def run() -> ActiveLearner:
+def run():
     # read args.
     args = ActiveLearningArgs().parse_args()
     # active learning
@@ -39,8 +39,7 @@ def run() -> ActiveLearner:
                                        logger=args.logger)
     active_learner.run(max_iter=args.max_iter)
     end = time.time()
-    args.logger.info('total time: %d s\n\n\n' % (end - start))
-    return active_learner
+    args.logger.info('total time: %d s' % (end - start))
 
 
 def run_from_cpt():
@@ -62,8 +61,7 @@ def run_from_cpt():
     active_learner.stop_size = args.stop_size
     active_learner.run()
     end = time.time()
-    args.logger.info('total time: %d s\n\n\n' % (end - start))
-    return active_learner
+    args.logger.info('total time: %d s' % (end - start))
 
 
 def run_eval():

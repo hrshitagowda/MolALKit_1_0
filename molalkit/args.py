@@ -13,12 +13,13 @@ from mgktools.features_mol import FeaturesGenerator
 from mgktools.data.split import data_split_index
 from molalkit.logging import create_logger
 from molalkit.utils import get_data, get_model, get_kernel
-from molalkit.data.data import DATA_DIR
+from molalkit.data.datasets import DATA_DIR
 from molalkit.al.selection_method import *
 from molalkit.al.forgetter import *
 
+CWD = os.path.dirname(os.path.abspath(__file__))
 Metric = Literal['roc-auc', 'accuracy', 'precision', 'recall', 'f1_score', 'mcc',
-'rmse', 'mae', 'mse', 'r2', 'max']
+                 'rmse', 'mae', 'mse', 'r2', 'max']
 
 
 class CommonArgs(Tap):
@@ -240,14 +241,24 @@ class ModelArgs(Tap):
 
     @property
     def model_config_selector_dict(self) -> Dict:
-        return json.loads(open(self.model_config_selector).read())
+        config_name = self.find_stored_model_config(self.model_config_selector)
+        return json.loads(open(config_name).read())
 
     @property
     def model_config_evaluators_dict(self) -> List[Dict]:
         if self.model_config_evaluators is None:
             return []
         else:
-            return [json.loads(open(m).read()) for m in self.model_config_evaluators]
+            return [json.loads(open(self.find_stored_model_config(m)).read()) for m in self.model_config_evaluators]
+
+    @staticmethod
+    def find_stored_model_config(config_name):
+        if os.path.exists(config_name):
+            return config_name
+        else:
+            stored_config_name = f'{CWD}/models/configs/{config_name}'
+            assert os.path.exists(stored_config_name), f'{config_name} is not a valid model configuration'
+            return stored_config_name
 
 
 class ActiveLearningArgs(DatasetArgs, ModelArgs):
@@ -577,7 +588,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                     self._selection_method = ExplorativeSelectionMethod(seed=self.seed)
             elif self.learning_type == 'exploitive':
                 if self.batch_mode == 'cluster':
-                    self._selection_method = ClusterExploitiveSelectionMethod(target=self.exploitive_target, seed=self.seed)
+                    self._selection_method = ClusterExploitiveSelectionMethod(target=self.exploitive_target,
+                                                                              seed=self.seed)
                 else:
                     self._selection_method = ExploitiveSelectionMethod(target=self.exploitive_target, seed=self.seed)
             else:

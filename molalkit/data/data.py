@@ -15,7 +15,6 @@ from mgktools.data.data import tolist, to_numpy
 # Cache of RDKit molecules
 CACHE_MOL = True
 SMILES_TO_MOL: Dict[str, Chem.Mol] = {}
-DATA_DIR = os.path.dirname(__file__)
 
 
 def remove_none(X: List):
