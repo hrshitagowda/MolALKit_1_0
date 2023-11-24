@@ -87,7 +87,7 @@ class DatasetArgs(CommonArgs):
 
     def process_args(self) -> None:
         super().process_args()
-        if self.data_public == 'freesolv':
+        if self.data_public == 'freesolv' or self.data_public == 'test_regression':
             self.data_path = os.path.join(DATA_DIR, '%s.csv' % self.data_public)
             self.pure_columns = ['smiles']
             self.target_columns = ['freesolv']
@@ -142,6 +142,7 @@ class DatasetArgs(CommonArgs):
             self.pure_columns = ['Drug']
             self.target_columns = ['Y']
             self.dataset_type = 'classification'
+
 
         if self.split_type == 'scaffold':
             assert len(self.pure_columns) == 1
@@ -277,7 +278,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     """the ratio of top molecules are considered."""
     yoked_learning_only: bool = False
     """Only perform yoked learning."""
-    learning_type: Literal['passive', 'explorative', 'exploitive', 'PI', 'EI', 'UCB']
+    learning_type: Literal['passive', 'explorative', 'exploitive']
     """the learning type to be performed."""
     exploitive_target: str = None
     """the target value for exploitive active learning."""
@@ -634,7 +635,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     @property
     def top_k_id(self) -> Optional[List[int]]:
         if self.top_k is not None:
-            assert 0. < self.top_k < 1.
+            assert 0. < self.top_k < 1., 'top_k must be in (0, 1).'
             assert len(self.target_columns) == 1
             n_top_k = math.ceil(self.top_k * (len(self.data_train_evaluators) + len(self.data_pool_selector)))
             y_AL = self.data_train_selector.y.ravel().tolist() + self.data_pool_selector.y.ravel().tolist()

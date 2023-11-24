@@ -32,7 +32,7 @@ class BaseRandomForgetter(BaseForgetter, ABC):
 
 
 class RandomForgetter(BaseRandomForgetter):
-    def __call__(self, data, batch_size: int = 1) -> Tuple[List[int], None]:
+    def __call__(self, data, batch_size: int = 1, **kwargs) -> Tuple[List[int], None]:
         assert batch_size < len(data)
         return np.random.choice(list(range(len(data))), batch_size, replace=False).tolist(), None
 
@@ -42,7 +42,7 @@ class RandomForgetter(BaseRandomForgetter):
 
 
 class FirstForgetter(BaseForgetter):
-    def __call__(self, data, batch_size: int = 1) -> Tuple[List[int], None]:
+    def __call__(self, data, batch_size: int = 1, **kwargs) -> Tuple[List[int], None]:
         assert batch_size < len(data)
         return list(range(batch_size)), None
 
@@ -52,7 +52,7 @@ class FirstForgetter(BaseForgetter):
 
 
 class MinOOBUncertaintyForgetter(BaseRandomForgetter):
-    def __call__(self, model: RFClassifier, data, batch_size: int = 1) -> Tuple[List[int], List[float]]:
+    def __call__(self, model: RFClassifier, data, batch_size: int = 1, **kwargs) -> Tuple[List[int], List[float]]:
         assert batch_size < len(data)
         assert isinstance(model, RFClassifier)
         assert model.oob_score is True
@@ -70,7 +70,7 @@ class MinOOBUncertaintyForgetter(BaseRandomForgetter):
 
 
 class MaxOOBUncertaintyForgetter(BaseRandomForgetter):
-    def __call__(self, model: RFClassifier, data, batch_size: int = 1) -> Tuple[List[int], List[float]]:
+    def __call__(self, model: RFClassifier, data, batch_size: int = 1, **kwargs) -> Tuple[List[int], List[float]]:
         """ Forget the samples with the highest out-of-bag (OOB) uncertainty.
 
         Parameters
@@ -138,7 +138,7 @@ class MinLOOErrorForgetter(BaseRandomForgetter):
         loo_error = np.absolute(y_loocv - data.y)
         # select the top-n points with least uncertainty
         forgotten_idx = get_topn_idx(loo_error, n=batch_size, target='min', cutoff=cutoff)
-        acquisition = loo_error[np.array(forgotten_idx)].tolist()
+        acquisition = loo_error[np.array(forgotten_idx)].tolist() if forgotten_idx else []
         return forgotten_idx, acquisition
 
     @property

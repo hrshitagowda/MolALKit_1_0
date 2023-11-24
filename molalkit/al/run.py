@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 import os.path
 import time
-from tqdm import tqdm
 from molalkit.args import ActiveLearningArgs, ActiveLearningContinueArgs, ReEvaluateArgs
 from molalkit.al.learner import ActiveLearner
 
 
-def run():
-    # read args.
-    args = ActiveLearningArgs().parse_args()
+def molalkit_run():
+    run(args=ActiveLearningArgs().parse_args())
+
+
+def run(args: ActiveLearningArgs):
     # active learning
     args.logger.info('Start a new active learning run.')
     start = time.time()
@@ -40,6 +41,7 @@ def run():
     active_learner.run(max_iter=args.max_iter)
     end = time.time()
     args.logger.info('total time: %d s' % (end - start))
+    return active_learner
 
 
 def run_from_cpt():

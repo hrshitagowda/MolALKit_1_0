@@ -29,7 +29,7 @@ setuptools.setup(
     ],
     entry_points={
         'console_scripts': [
-            'molalkit_run=molalkit.al.run:run',
+            'molalkit_run=molalkit.al.run:molalkit_run',
         ]
     },
     author='Yan Xiang',

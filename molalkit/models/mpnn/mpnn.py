@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import time
 from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
 from tqdm import trange
 from logging import Logger
@@ -114,6 +115,8 @@ class MPNN:
         self.logger = logger
 
     def fit_alb(self, train_data):
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         args = self.args
         args.train_data_size = len(train_data)
         logger = self.logger
