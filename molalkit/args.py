@@ -178,9 +178,9 @@ class DatasetArgs(CommonArgs):
                 if self.error_rate is not None:
                     # randomly select a portion of the training set to be affected by error
                     error_index = np.random.choice(al_index, int(self.error_rate * len(al_index)), replace=False)
-                    df_al.loc[df_al.index.isin(error_index), self.target_columns[0]] ^= 1
-                    df_al.loc[df_al.index.isin(error_index), 'flip_label'] = True
-                    df_al.loc[~df_al.index.isin(error_index), 'flip_label'] = False
+                    df_al['flip_label'] = False
+                    df_al.loc[error_index, self.target_columns[0]] ^= 1
+                    df_al.loc[error_index, 'flip_label'] = True
             # split the active learning set into training and pool sets
             assert self.init_size < len(df_al)
             if self.dataset_type == 'regression':
