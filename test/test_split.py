@@ -56,6 +56,28 @@ def test_classification_full():
     shutil.rmtree(f'{save_dir}')
 
 
+def test_classification_no_val():
+    save_dir = os.path.join(CWD, 'test')
+    arguments = [
+        '--data_public', 'carcinogens_lagunin',
+        '--learning_type', 'explorative',
+        '--model_config_selector', 'RandomForest_RDKitNorm_Config',
+        '--split_type', 'random',
+        '--split_sizes', '1.0', '0.0',
+        '--stop_size', '5',
+        '--seed', '0',
+        '--save_dir', save_dir,
+        '--n_jobs', '4'
+    ]
+    args = ActiveLearningArgs().parse_args(arguments)
+    assert args.data_val_selector is None
+    active_learner = run(args)
+    assert active_learner.dataset_val_selector is None
+    assert len(active_learner.active_learning_traj.results) == 3
+    al_results_check(save_dir)
+    shutil.rmtree(f'{save_dir}')
+
+
 @pytest.mark.parametrize('split', ['random', 'scaffold_order', 'scaffold_random'])
 def test_regression(split):
     save_dir = os.path.join(CWD, 'test')
@@ -97,6 +119,28 @@ def test_regression_full():
     active_learner = run(args)
     assert (len(active_learner.dataset_train_selector) + len(active_learner.dataset_pool_selector) ==
             len(active_learner.dataset_val_selector))
+    assert len(active_learner.active_learning_traj.results) == 3
+    al_results_check(save_dir)
+    shutil.rmtree(f'{save_dir}')
+
+
+def test_regression_no_val():
+    save_dir = os.path.join(CWD, 'test')
+    arguments = [
+        '--data_public', 'test_regression',
+        '--learning_type', 'explorative',
+        '--model_config_selector', 'RandomForest_RDKitNorm_Config',
+        '--split_type', 'random',
+        '--split_sizes', '1.0', '0.0',
+        '--stop_size', '5',
+        '--seed', '0',
+        '--save_dir', save_dir,
+        '--n_jobs', '4'
+    ]
+    args = ActiveLearningArgs().parse_args(arguments)
+    assert args.data_val_selector is None
+    active_learner = run(args)
+    assert active_learner.dataset_val_selector is None
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
     shutil.rmtree(f'{save_dir}')

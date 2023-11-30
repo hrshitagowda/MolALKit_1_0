@@ -162,8 +162,9 @@ class ActiveLearner:
             return False
 
     def run(self, max_iter: int = None):
-        info = f'Start active learning with training set size = {self.train_size}, pool set size = {self.pool_size}.' \
-               f'\nSelection method: {self.selection_method.info}.'
+        info = f'Start active learning: \n' \
+               f'training set size = {self.train_size}\npool set size = {self.pool_size}\n' \
+               f'selection method: {self.selection_method.info}.'
         if self.forgetter is not None:
             info += f'\nForgetter: {self.forgetter.info}.'
         self.info(info)
@@ -196,6 +197,21 @@ class ActiveLearner:
         df_traj.to_csv(os.path.join(self.save_dir, 'al_traj.csv'), index=False)
         if self.save_cpt_stride:
             self.save(path=self.save_dir, overwrite=True)
+
+    def run_prospective(self):
+        self.model_fitted = False
+        n_iter = self.current_iter
+        alr = ActiveLearningResult(n_iter)
+        alr.id_prior_al = self.get_id(self.dataset_train_selector)
+        if self.termination():
+            return None
+        # add sample
+        self.add_samples(alr)
+        # forget sample
+        self.forget_samples(alr)
+        self.current_iter += 1
+        self.active_learning_traj.results.append(alr)
+        return alr
 
     def evaluate(self, alr: ActiveLearningResult):
         self.info('evaluating model performance.')
@@ -242,7 +258,6 @@ class ActiveLearner:
         self.model_fitted = False
 
     def forget_samples(self, alr: ActiveLearningResult):
-        # no forget algorithm is applied.
         # or forget algorithm is applied when self.forgetter.forget_size <= self.train_size.
         if self.forgetter is None or (self.forgetter.forget_size is not None and
                                       self.forgetter.forget_size > self.train_size):

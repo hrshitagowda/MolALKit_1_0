@@ -212,11 +212,17 @@ class DatasetArgs(CommonArgs):
             # data comes from 3 different files.
             assert self.data_path_training is not None, 'please provide input data'
             assert self.data_path_pool is not None, 'please provide input data'
-            assert self.data_path_val is not None, 'please provide input data'
+            # assert self.data_path_val is not None, 'please provide input data'
             shutil.copyfile(self.data_path_training, '%s/train_init.csv' % self.save_dir)
             shutil.copyfile(self.data_path_pool, '%s/pool_init.csv' % self.save_dir)
-            shutil.copyfile(self.data_path_val, '%s/val.csv' % self.save_dir)
-            df = pd.concat([pd.read_csv(f) for f in [self.data_path_training, self.data_path_pool, self.data_path_val]])
+            if self.data_path_val is None:
+                pd.read_csv(self.data_path_training).sample(0).to_csv('%s/val.csv' % self.save_dir, index=False)
+                df = pd.concat([pd.read_csv(f) for f in [self.data_path_training,
+                                                         self.data_path_pool]])
+            else:
+                df = pd.concat([pd.read_csv(f) for f in [self.data_path_training,
+                                                         self.data_path_pool,
+                                                         self.data_path_val]])
             if 'id' not in df:
                 df['id'] = range(len(df))
                 df_train = pd.read_csv('%s/train_init.csv' % self.save_dir)
@@ -269,9 +275,9 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     """the cpu numbers used for parallel computing."""
     data_path: str = None
     """the Path of input data CSV file."""
-    metrics: List[Metric]
+    metrics: List[Metric] = None
     """the metrics to evaluate model performance."""
-    evaluate_stride: int = 100
+    evaluate_stride: int = None
     """evaluate model performance on the validation set when the size of the training set is an integer multiple of the 
     evaluation stride."""
     top_k: float = None
@@ -692,12 +698,16 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
         for data in self.data_train_selector.data + self.data_pool_selector.data:
             assert data.id not in unique_id
             unique_id.append(data.id)
-        for data in self.data_val_selector:
-            if self.full_val:
-                assert data.id in unique_id
-            else:
-                assert data.id not in unique_id
-                unique_id.append(data.id)
+        if self.data_val_selector is not None:
+            for data in self.data_val_selector:
+                if self.full_val:
+                    assert data.id in unique_id
+                else:
+                    assert data.id not in unique_id
+                    unique_id.append(data.id)
+        else:
+            assert self.metrics is None
+            assert self.evaluate_stride is None
 
     def flip_labels(self, datasets, error_index):
         i = 0
@@ -728,7 +738,6 @@ class ReEvaluateArgs(CommonArgs):
     evaluation stride."""
     metrics: List[Metric]
     """the metrics to evaluate model performance."""
-
     data_public = None
     """Use public data sets."""
     data_path: str = None

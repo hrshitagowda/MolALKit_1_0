@@ -28,6 +28,9 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
              features_combination: Literal['concat', 'mean'] = None,
              graph_kernel_type: Literal['graph', 'pre-computed'] = None,
              n_jobs: int = 8):
+    df = pd.read_csv(path)
+    if len(df) == 0:
+        return None
     if data_format == 'fingerprints':
         from molalkit.data.utils import get_data
         dataset = get_data(path=path,
@@ -61,7 +64,6 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
                            n_jobs=n_jobs)
     else:
         raise ValueError('input error')
-    df = pd.read_csv(path)
     if 'id' not in df:
         df['id'] = range(len(df))
     for i, data in enumerate(dataset):
