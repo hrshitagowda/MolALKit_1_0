@@ -2,10 +2,9 @@
 # -*- coding: utf-8 -*-
 import pytest
 import os
-import shutil
 import pandas as pd
 from molalkit.args import ActiveLearningArgs
-from test_model.test_model import run, al_results_check
+from model.test_model import run, al_results_check
 
 
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -38,4 +37,3 @@ def test_classification(error_rate):
     df_ = pd.read_csv('%s/val.csv' % save_dir)
     assert abs(len(df) - len(df_)) <= 1
     assert df['flip_label'].sum() == int(float(error_rate) * len(df))
-    shutil.rmtree(f'{save_dir}')

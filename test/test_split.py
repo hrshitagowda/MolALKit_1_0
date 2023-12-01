@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 import os
-import shutil
 from molalkit.args import ActiveLearningArgs
-from test_model.test_model import run, al_results_check
+from model.test_model import run, al_results_check
 
 
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +29,6 @@ def test_classification(split):
     active_learner = run(args)
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')
 
 
 def test_classification_full():
@@ -53,7 +51,6 @@ def test_classification_full():
             len(active_learner.dataset_val_selector))
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')
 
 
 def test_classification_no_val():
@@ -75,7 +72,6 @@ def test_classification_no_val():
     assert active_learner.dataset_val_selector is None
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')
 
 
 @pytest.mark.parametrize('split', ['random', 'scaffold_order', 'scaffold_random'])
@@ -98,7 +94,6 @@ def test_regression(split):
     active_learner = run(args)
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')
 
 
 def test_regression_full():
@@ -121,7 +116,6 @@ def test_regression_full():
             len(active_learner.dataset_val_selector))
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')
 
 
 def test_regression_no_val():
@@ -143,4 +137,3 @@ def test_regression_no_val():
     assert active_learner.dataset_val_selector is None
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')

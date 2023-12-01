@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 import os
-import shutil
 from molalkit.args import ActiveLearningArgs
-from test_model.test_model import run, al_results_check
+from model.test_model import run, al_results_check
 
 
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +29,6 @@ def test_classification(metric):
     active_learner = run(args)
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')
 
 
 @pytest.mark.parametrize('metric', ['rmse', 'mae', 'mse', 'r2', 'max'])
@@ -53,4 +51,3 @@ def test_regression(metric):
     active_learner = run(args)
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')

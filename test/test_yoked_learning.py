@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 import os
-import shutil
 from molalkit.args import ActiveLearningArgs
-from test_model.test_model import run, al_results_check
+from model.test_model import run, al_results_check
 
 
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +31,6 @@ def test_classification(teacher_model, student_model):
     active_learner = run(args)
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')
 
 
 @pytest.mark.parametrize('teacher_model', ['RandomForest_RDKitNorm_Config'])
@@ -57,4 +55,3 @@ def test_regression(teacher_model, student_model):
     active_learner = run(args)
     assert len(active_learner.active_learning_traj.results) == 3
     al_results_check(save_dir)
-    shutil.rmtree(f'{save_dir}')

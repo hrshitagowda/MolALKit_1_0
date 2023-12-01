@@ -2,11 +2,9 @@
 # -*- coding: utf-8 -*-
 import pytest
 import os
-import shutil
 from molalkit.args import ActiveLearningArgs
 from molalkit.al.learner import ActiveLearner
 from molalkit.data.datasets import DATA_DIR
-from test_model.test_model import al_results_check
 
 
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -20,12 +18,10 @@ def test_classification(batch_size):
         '--data_path_pool', f'{DATA_DIR}/skin.csv',
         '--pure_columns', 'Drug',
         '--target_columns', 'Y',
-        '--metrics', 'roc-auc',
         '--learning_type', 'explorative',
         '--model_config_selector', 'RandomForest_RDKitNorm_Config',
         '--split_type', 'random',
         '--split_sizes', '1.0', '0.0',
-        '--evaluate_stride', '1',
         '--batch_size', batch_size,
         '--stop_size', '300',
         '--seed', '0',
@@ -58,4 +54,3 @@ def test_classification(batch_size):
     assert len(alr.id_add) == batch_size
     ids = [data.id for data in active_learner.dataset_train_selector[-batch_size:]]
     assert set(ids) == set(alr.id_add)
-    shutil.rmtree(f'{save_dir}')
