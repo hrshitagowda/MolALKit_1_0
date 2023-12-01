@@ -110,7 +110,8 @@ class ActiveLearner:
                  model_evaluators=None, dataset_train_evaluators=None,
                  dataset_pool_evaluators=None, dataset_val_evaluators=None,
                  yoked_learning_only: bool = False,
-                 stop_size: int = None, evaluate_stride: int = None, kernel: Callable = None,
+                 stop_size: int = None, stop_cutoff: float = None,
+                 evaluate_stride: int = None, kernel: Callable = None,
                  save_cpt_stride: int = None,
                  seed: int = 0,
                  logger: Logger = None):
@@ -130,6 +131,7 @@ class ActiveLearner:
         self.yoked_learning_only = yoked_learning_only
 
         self.stop_size = stop_size
+        self.stop_cutoff = stop_cutoff
         self.evaluate_stride = evaluate_stride
         self.kernel = kernel  # used for cluster selection method
         self.save_cpt_stride = save_cpt_stride
@@ -158,6 +160,24 @@ class ActiveLearner:
         elif self.stop_size is not None and self.train_size >= self.stop_size:
             self.info(f'Terminating active learning: train_size > stop_size {self.stop_size}')
             return True
+        elif self.stop_cutoff is not None and len(self.active_learning_traj.results) > 0:
+            acquisition = self.active_learning_traj.results[-1].acquisition_add
+            if not hasattr(self.selection_method, 'target') or self.selection_method.target == 'max':
+                if np.min(acquisition) <= self.stop_cutoff:
+                    self.info(f'Terminating active learning: acquisition < stop_cutoff {self.stop_cutoff}')
+                    return True
+                else:
+                    return False
+            elif self.selection_method.target == 'min':
+                if np.max(acquisition) >= self.stop_cutoff:
+                    self.info(f'Terminating active learning: acquisition > stop_cutoff {self.stop_cutoff}')
+                    return True
+                else:
+                    return False
+            else:
+                if np.max(np.abs(np.array(acquisition) - self.selection_method.target)) >= self.stop_cutoff:
+                    self.info(f'Terminating active learning: abs(acquisition - target) > stop_cutoff {self.stop_cutoff}')
+                    return True
         else:
             return False
 

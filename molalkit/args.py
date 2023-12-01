@@ -19,7 +19,7 @@ from molalkit.al.forgetter import *
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 Metric = Literal['roc-auc', 'accuracy', 'precision', 'recall', 'f1_score', 'mcc',
-                 'rmse', 'mae', 'mse', 'r2', 'max']
+'rmse', 'mae', 'mse', 'r2', 'max']
 
 
 class CommonArgs(Tap):
@@ -142,7 +142,6 @@ class DatasetArgs(CommonArgs):
             self.pure_columns = ['Drug']
             self.target_columns = ['Y']
             self.dataset_type = 'classification'
-
 
         if self.split_type == 'scaffold':
             assert len(self.pure_columns) == 1
@@ -298,6 +297,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     """Stop active learning when the selected molecules reach the ratio."""
     stop_size: int = None
     """Stop active learning when the selected molecules reach the number."""
+    stop_cutoff: float = None
+    """Stop active learning when the acquisition function reach the cutoff."""
     max_iter: int = None
     """the maximum number of iterations."""
     save_cpt_stride: int = None
