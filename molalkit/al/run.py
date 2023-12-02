@@ -33,6 +33,7 @@ def run(args: ActiveLearningArgs):
                                        dataset_val_evaluators=args.data_val_evaluators,
                                        yoked_learning_only=args.yoked_learning_only,
                                        stop_size=args.stop_size,
+                                       stop_cutoff=args.stop_cutoff,
                                        evaluate_stride=args.evaluate_stride,
                                        kernel=args.kernel_selector,
                                        save_cpt_stride=args.save_cpt_stride,

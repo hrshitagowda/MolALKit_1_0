@@ -10,6 +10,19 @@ from sklearn.manifold import SpectralEmbedding
 
 def get_topn_idx(values: np.ndarray, n: int = 1, target: Union[Literal['max', 'min'], float] = 'max',
                  cutoff: float = None) -> List[int]:
+    """ Get the indices of top n values.
+
+    Parameters
+    ----------
+    values: array-like.
+    n: number of indices to be selected.
+    target: 'max', 'min', or a float value.
+    cutoff: if not None, only values >= cutoff (when target=max) will be considered.
+
+    Returns
+    -------
+
+    """
     if isinstance(values, list):
         values = np.array(values)
     if target == 'min':
@@ -18,7 +31,7 @@ def get_topn_idx(values: np.ndarray, n: int = 1, target: Union[Literal['max', 'm
             cutoff = - cutoff
     elif isinstance(target, float):
         assert cutoff is None
-        values = np.absolute(values - target)  # distance from target
+        values = - np.absolute(values - target)  # distance from target
     if cutoff is not None:
         n_candidates = len(np.where(values >= cutoff)[0])
         n = min(n, n_candidates)
