@@ -12,6 +12,7 @@ from sklearn.metrics import *
 from ..args import Metric
 from .selection_method import BaseSelectionMethod, RandomSelectionMethod
 from .forgetter import BaseForgetter, RandomForgetter, FirstForgetter
+from .selection_method import get_subset
 
 
 def eval_metric_func(y, y_pred, metric: str) -> float:
@@ -111,7 +112,8 @@ class ActiveLearner:
                  dataset_pool_evaluators=None, dataset_val_evaluators=None,
                  yoked_learning_only: bool = False,
                  stop_size: int = None, stop_cutoff: float = None,
-                 evaluate_stride: int = None, kernel: Callable = None,
+                 n_query: int = None,
+                 evaluate_stride: int = None, output_details: bool = False, kernel: Callable = None,
                  save_cpt_stride: int = None,
                  seed: int = 0,
                  logger: Logger = None):
@@ -129,10 +131,11 @@ class ActiveLearner:
         self.dataset_pool_evaluators = dataset_pool_evaluators or []
         self.dataset_val_evaluators = dataset_val_evaluators or []
         self.yoked_learning_only = yoked_learning_only
-
         self.stop_size = stop_size
         self.stop_cutoff = stop_cutoff
+        self.n_query = n_query
         self.evaluate_stride = evaluate_stride
+        self.output_details = output_details
         self.kernel = kernel  # used for cluster selection method
         self.save_cpt_stride = save_cpt_stride
 
@@ -176,7 +179,8 @@ class ActiveLearner:
                     return False
             else:
                 if np.max(np.abs(np.array(acquisition) - self.selection_method.target)) >= self.stop_cutoff:
-                    self.info(f'Terminating active learning: abs(acquisition - target) > stop_cutoff {self.stop_cutoff}')
+                    self.info(
+                        f'Terminating active learning: abs(acquisition - target) > stop_cutoff {self.stop_cutoff}')
                     return True
         else:
             return False
@@ -243,6 +247,9 @@ class ActiveLearner:
                     self.model_selector.fit_alb(self.dataset_train_selector)
                     self.model_fitted = True
                 y_pred = self.model_selector.predict_value(self.dataset_val_selector)
+                if self.output_details:
+                    pd.DataFrame({'true': self.dataset_val_selector.y, 'pred': y_pred}).to_csv(
+                        os.path.join(self.save_dir, f'selector_{self.current_iter}.csv'), index=False)
                 for metric in self.metrics:
                     metric_value = eval_metric_func(self.dataset_val_selector.y, y_pred, metric=metric)
                     alr.results[f'{metric}_selector'] = metric_value
@@ -254,6 +261,9 @@ class ActiveLearner:
             if self.metrics is not None:
                 model.fit_alb(self.dataset_train_evaluators[i])
                 y_pred = model.predict_value(self.dataset_val_evaluators[i])
+                if self.output_details:
+                    pd.DataFrame({'true': self.dataset_val_selector.y, 'pred': y_pred}).to_csv(
+                        os.path.join(self.save_dir, f'evaluator_{i}_{self.current_iter}.csv'), index=False)
                 for metric in self.metrics:
                     metric_value = eval_metric_func(self.dataset_val_evaluators[i].y, y_pred, metric=metric)
                     alr.results[f'{metric}_evaluator_{i}'] = metric_value
@@ -263,17 +273,21 @@ class ActiveLearner:
         # train the model if it is not trained in the evaluation step, and the selection method is not random.
         if not self.model_fitted and not isinstance(self.selection_method, RandomSelectionMethod):
             self.model_selector.fit_alb(self.dataset_train_selector)
-        selected_idx, acquisition = self.selection_method(model=self.model_selector,
-                                                          data_train=self.dataset_train_selector,
-                                                          data_pool=self.dataset_pool_selector,
-                                                          kernel=self.kernel)
+        selected_idx, acquisition, remain_idx = self.selection_method(model=self.model_selector,
+                                                                      data_train=self.dataset_train_selector,
+                                                                      data_pool=self.dataset_pool_selector,
+                                                                      kernel=self.kernel,
+                                                                      stop_cutoff=self.stop_cutoff)
         alr.id_add = [self.dataset_pool_selector.data[i].id for i in selected_idx]
         alr.acquisition_add = acquisition
         # transfer data from pool to train.
-        for i in sorted(selected_idx, reverse=True):
-            self.dataset_train_selector.data.append(self.dataset_pool_selector.data.pop(i))
+        for i in selected_idx:
+            self.dataset_train_selector.data.append(self.dataset_pool_selector.data[i])
             for j in range(len(self.model_evaluators)):
-                self.dataset_train_evaluators[j].data.append(self.dataset_pool_evaluators[j].data.pop(i))
+                self.dataset_train_evaluators[j].data.append(self.dataset_pool_evaluators[j].data[i])
+        self.dataset_pool_selector = get_subset(self.dataset_pool_selector, remain_idx)
+        for j in range(len(self.model_evaluators)):
+            self.dataset_pool_evaluators[j] = get_subset(self.dataset_pool_evaluators[j], remain_idx)
         # set the model unfitted because new data is added.
         self.model_fitted = False
 
