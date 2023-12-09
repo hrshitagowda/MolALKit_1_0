@@ -85,6 +85,33 @@ class DatasetArgs(CommonArgs):
     error_rate: float = None
     """the percent of the training set that will be affected by error (0-1)."""
 
+    def get_train_pool_split_index(self, df_al: pd.DataFrame) -> Tuple[List[int], List[int]]:
+        assert self.init_size < len(df_al)
+        if self.dataset_type == 'regression':
+            train_index, pool_index = data_split_index(
+                n_samples=len(df_al),
+                mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                split_type='random',
+                sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
+                seed=self.seed)
+        else:
+            train_index, pool_index = data_split_index(
+                n_samples=len(df_al),
+                mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                targets=df_al[self.target_columns[0]],
+                split_type='init_al',
+                n_samples_per_class=1,
+                seed=self.seed)
+            # randomly select self.init_size - 2 samples from the pool set to be the training set
+            if self.init_size > 2:
+                train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
+                _ = []
+                for i in pool_index:
+                    if i not in train_index:
+                        _.append(i)
+                pool_index = _
+        return train_index, pool_index
+
     def process_args(self) -> None:
         super().process_args()
         if self.data_public == 'freesolv' or self.data_public == 'test_regression':
@@ -181,47 +208,29 @@ class DatasetArgs(CommonArgs):
                     df_al.loc[error_index, self.target_columns[0]] ^= 1
                     df_al.loc[error_index, 'flip_label'] = True
             # split the active learning set into training and pool sets
-            assert self.init_size < len(df_al)
-            if self.dataset_type == 'regression':
-                train_index, pool_index = data_split_index(
-                    n_samples=len(df_al),
-                    mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
-                    split_type='random',
-                    sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
-                    seed=self.seed)
-            else:
-                train_index, pool_index = data_split_index(
-                    n_samples=len(df_al),
-                    mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
-                    targets=df_al[self.target_columns[0]],
-                    split_type='init_al',
-                    n_samples_per_class=1,
-                    seed=self.seed)
-                # randomly select self.init_size - 2 samples from the pool set to be the training set
-                if self.init_size > 2:
-                    train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
-                    _ = []
-                    for i in pool_index:
-                        if i not in train_index:
-                            _.append(i)
-                    pool_index = _
+            train_index, pool_index = self.get_train_pool_split_index(df_al)
             df_al.iloc[train_index].to_csv('%s/train_init.csv' % self.save_dir, index=False)
             df_al.iloc[pool_index].to_csv('%s/pool_init.csv' % self.save_dir, index=False)
         else:
             # data comes from 3 different files.
             assert self.data_path_training is not None, 'please provide input data'
-            assert self.data_path_pool is not None, 'please provide input data'
-            # assert self.data_path_val is not None, 'please provide input data'
-            shutil.copyfile(self.data_path_training, '%s/train_init.csv' % self.save_dir)
-            shutil.copyfile(self.data_path_pool, '%s/pool_init.csv' % self.save_dir)
+            if self.data_path_pool is None:
+                df_al = pd.read_csv(self.data_path_training)
+                train_index, pool_index = self.get_train_pool_split_index(df_al)
+                df_al.iloc[train_index].to_csv('%s/train_init.csv' % self.save_dir, index=False)
+                df_al.iloc[pool_index].to_csv('%s/pool_init.csv' % self.save_dir, index=False)
+            else:
+                shutil.copyfile(self.data_path_training, '%s/train_init.csv' % self.save_dir)
+                shutil.copyfile(self.data_path_pool, '%s/pool_init.csv' % self.save_dir)
             if self.data_path_val is None:
                 pd.read_csv(self.data_path_training).sample(0).to_csv('%s/val.csv' % self.save_dir, index=False)
-                df = pd.concat([pd.read_csv(f) for f in [self.data_path_training,
-                                                         self.data_path_pool]])
+                df = pd.concat([pd.read_csv(f) for f in ['%s/train_init.csv' % self.save_dir,
+                                                         '%s/pool_init.csv' % self.save_dir]])
             else:
-                df = pd.concat([pd.read_csv(f) for f in [self.data_path_training,
-                                                         self.data_path_pool,
-                                                         self.data_path_val]])
+                shutil.copyfile(self.data_path_val, '%s/val.csv' % self.save_dir)
+                df = pd.concat([pd.read_csv(f) for f in ['%s/train_init.csv' % self.save_dir,
+                                                         '%s/pool_init.csv' % self.save_dir,
+                                                         '%s/val.csv' % self.save_dir]])
             if 'id' not in df:
                 df['id'] = range(len(df))
                 df_train = pd.read_csv('%s/train_init.csv' % self.save_dir)
