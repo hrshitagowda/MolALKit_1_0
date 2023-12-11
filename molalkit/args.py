@@ -169,6 +169,34 @@ class DatasetArgs(CommonArgs):
             self.pure_columns = ['Drug']
             self.target_columns = ['Y']
             self.dataset_type = 'classification'
+        elif self.data_public == 'human_liver_microsome_stability':
+            self.data_path = os.path.join(DATA_DIR, '%s.csv' % self.data_public)
+            self.pure_columns = ['SMILES']
+            self.target_columns = ['LOG HLM_CLint (mL/min/kg)']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'rat_liver_microsome_stability':
+            self.data_path = os.path.join(DATA_DIR, '%s.csv' % self.data_public)
+            self.pure_columns = ['SMILES']
+            self.target_columns = ['LOG RLM_CLint (mL/min/kg)']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'MDRR1-MDCK_efflux_ratio':
+            self.data_path = os.path.join(DATA_DIR, '%s.csv' % self.data_public)
+            self.pure_columns = ['SMILES']
+            self.target_columns = ['LOG MDR1-MDCK ER (B-A/A-B)']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'aqueous_solubility':
+            self.data_path = os.path.join(DATA_DIR, '%s.csv' % self.data_public)
+            self.pure_columns = ['SMILES']
+            self.target_columns = ['LOG SOLUBILITY PH 6.8 (ug/mL)']
+            self.dataset_type = 'regression'
+        elif self.data_public == 'human_plasma_protein_binding':
+            self.data_path = os.path.join(DATA_DIR, '%s.csv' % self.data_public)
+            self.pure_columns = ['SMILES']
+            self.target_columns = ['LOG PLASMA PROTEIN BINDING (HUMAN) (% unbound)']
+        elif self.data_public == 'rat_plasma_protein_binding':
+            self.data_path = os.path.join(DATA_DIR, '%s.csv' % self.data_public)
+            self.pure_columns = ['SMILES']
+            self.target_columns = ['LOG PLASMA PROTEIN BINDING (RAT) (% unbound)']
 
         if self.split_type == 'scaffold':
             assert len(self.pure_columns) == 1
