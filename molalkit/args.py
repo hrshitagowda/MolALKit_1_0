@@ -86,30 +86,34 @@ class DatasetArgs(CommonArgs):
     """the percent of the training set that will be affected by error (0-1)."""
 
     def get_train_pool_split_index(self, df_al: pd.DataFrame) -> Tuple[List[int], List[int]]:
-        assert self.init_size < len(df_al)
-        if self.dataset_type == 'regression':
-            train_index, pool_index = data_split_index(
-                n_samples=len(df_al),
-                mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
-                split_type='random',
-                sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
-                seed=self.seed)
+        if self.init_size >= len(df_al):
+            self.logger.warning('molalkit warning: init_size is larger than the dataset size, '
+                                'use the full dataset as training set and empty pool set.')
+            train_index, pool_index = list(range(len(df_al))), []
         else:
-            train_index, pool_index = data_split_index(
-                n_samples=len(df_al),
-                mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
-                targets=df_al[self.target_columns[0]],
-                split_type='init_al',
-                n_samples_per_class=1,
-                seed=self.seed)
-            # randomly select self.init_size - 2 samples from the pool set to be the training set
-            if self.init_size > 2:
-                train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
-                _ = []
-                for i in pool_index:
-                    if i not in train_index:
-                        _.append(i)
-                pool_index = _
+            if self.dataset_type == 'regression':
+                train_index, pool_index = data_split_index(
+                    n_samples=len(df_al),
+                    mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                    split_type='random',
+                    sizes=[self.init_size / len(df_al), 1 - self.init_size / len(df_al)],
+                    seed=self.seed)
+            else:
+                train_index, pool_index = data_split_index(
+                    n_samples=len(df_al),
+                    mols=df_al[self.pure_columns[0]] if self.pure_columns is not None else None,
+                    targets=df_al[self.target_columns[0]],
+                    split_type='init_al',
+                    n_samples_per_class=1,
+                    seed=self.seed)
+                # randomly select self.init_size - 2 samples from the pool set to be the training set
+                if self.init_size > 2:
+                    train_index.extend(np.random.choice(pool_index, self.init_size - 2, replace=False))
+                    _ = []
+                    for i in pool_index:
+                        if i not in train_index:
+                            _.append(i)
+                    pool_index = _
         return train_index, pool_index
 
     def process_args(self) -> None:
@@ -726,7 +730,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
             assert self.stop_size >= 2
         # set the default maximum number of iterations of active learning
         if self.max_iter is None:
-            self.max_iter = len(self.data_pool_selector)
+            self.max_iter = 0 if self.data_pool_selector is None else len(self.data_pool_selector)
         # check the input for exploitive active learning
         if self.learning_type == 'exploitive':
             assert self.dataset_type == 'regression', 'exploitive active learning only support regression task.'
@@ -745,17 +749,22 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                     data.flip_label = True
                 else:
                     data.flip_label = False
-            df = pd.read_csv('%s/pool_init.csv' % self.save_dir)
-            for i, data in enumerate(self.data_pool_selector.data):
-                if df.loc[i, 'flip_label'] is True:
-                    data.flip_label = True
-                else:
-                    data.flip_label = False
+            if self.data_pool_selector is not None:
+                df = pd.read_csv('%s/pool_init.csv' % self.save_dir)
+                for i, data in enumerate(self.data_pool_selector.data):
+                    if df.loc[i, 'flip_label'] is True:
+                        data.flip_label = True
+                    else:
+                        data.flip_label = False
         # check unique ID for the data sets.
         unique_id = []
-        for data in self.data_train_selector.data + self.data_pool_selector.data:
+        for data in self.data_train_selector.data:
             assert data.id not in unique_id
             unique_id.append(data.id)
+        if self.data_pool_selector is not None:
+            for data in self.data_pool_selector.data:
+                assert data.id not in unique_id
+                unique_id.append(data.id)
         if self.data_val_selector is not None:
             for data in self.data_val_selector:
                 if self.full_val:
