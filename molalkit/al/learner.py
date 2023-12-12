@@ -97,8 +97,8 @@ class ActiveLearningTrajectory:
                 results_dict['top_k_score'] = results
         results_dict['id_add'] = [json.dumps(alr.id_add, cls=NpEncoder) for alr in self.results]
         results_dict['acquisition_add'] = [json.dumps(alr.acquisition_add, cls=NpEncoder) for alr in self.results]
-        results_dict['id_forgotten'] = [json.dumps(alr.id_forgotten, cls=NpEncoder) for alr in self.results]
-        results_dict['acquisition_forgotten'] = [json.dumps(alr.acquisition_forgotten,
+        results_dict['id_forget'] = [json.dumps(alr.id_forget, cls=NpEncoder) for alr in self.results]
+        results_dict['acquisition_forget'] = [json.dumps(alr.acquisition_forget,
                                                             cls=NpEncoder) for alr in self.results]
         results_dict['id_prior_al'] = [json.dumps(alr.id_prior_al, cls=NpEncoder) for alr in self.results]
         return results_dict
@@ -154,7 +154,7 @@ class ActiveLearner:
 
     @property
     def pool_size(self) -> int:
-        return len(self.dataset_pool_selector)
+        return 0 if self.dataset_pool_selector is None else len(self.dataset_pool_selector)
 
     def termination(self) -> bool:
         if self.pool_size == 0:
@@ -196,12 +196,16 @@ class ActiveLearner:
         for n_iter in range(self.current_iter, max_iter):
             alr = ActiveLearningResult(n_iter)
             alr.id_prior_al = self.get_id(self.dataset_train_selector)
-            if self.termination():
-                break
             self.info('Start an new iteration of active learning: %d.' % self.current_iter)
             # evaluate
             if self.evaluate_stride is not None and n_iter % self.evaluate_stride == 0:
                 self.evaluate(alr)
+            # check termination condition
+            if self.termination():
+                alr.id_add = alr.acquisition_add = alr.id_forget = alr.acquisition_forget = []
+                # save the results of the last frame of AL
+                self.active_learning_traj.results.append(alr)
+                break
             # add sample
             self.add_samples(alr)
             # forget sample
@@ -216,7 +220,6 @@ class ActiveLearner:
             self.info('Training set size = %i' % self.train_size)
             self.info('Pool set size = %i' % self.pool_size)
             self.active_learning_traj.results.append(alr)
-
         df_traj = pd.DataFrame(self.active_learning_traj.get_results())
         df_traj.to_csv(os.path.join(self.save_dir, 'al_traj.csv'), index=False)
         if self.save_cpt_stride:
@@ -295,28 +298,28 @@ class ActiveLearner:
         # or forget algorithm is applied when self.forgetter.forget_size <= self.train_size.
         if self.forgetter is None or (self.forgetter.forget_size is not None and
                                       self.forgetter.forget_size > self.train_size):
-            alr.id_forgotten = []
-            alr.acquisition_forgotten = []
+            alr.id_forget = []
+            alr.acquisition_forget = []
             return
         # train the model if the forgetter is not random or first.
         if not self.model_fitted and not self.forgetter.__class__ in [RandomForgetter, FirstForgetter]:
             self.model_selector.fit_alb(self.dataset_train_selector)
         # forget algorithm is applied.
-        forgotten_idx, acquisition = self.forgetter(model=self.model_selector,
+        forget_idx, acquisition = self.forgetter(model=self.model_selector,
                                                     data=self.dataset_train_selector,
                                                     batch_size=self.forgetter.batch_size,
                                                     cutoff=self.forgetter.forget_cutoff)
-        if forgotten_idx:
-            alr.id_forgotten = [self.dataset_train_selector.data[i].id for i in forgotten_idx]
-            alr.acquisition_forgotten = acquisition
+        if forget_idx:
+            alr.id_forget = [self.dataset_train_selector.data[i].id for i in forget_idx]
+            alr.acquisition_forget = acquisition
             # transfer data from train to pool.
-            for i in sorted(forgotten_idx, reverse=True):
+            for i in sorted(forget_idx, reverse=True):
                 self.dataset_pool_selector.data.append(self.dataset_train_selector.data.pop(i))
                 for j in range(len(self.model_evaluators)):
                     self.dataset_pool_evaluators[j].data.append(self.dataset_train_evaluators[j].data.pop(i))
         else:
-            alr.id_forgotten = []
-            alr.acquisition_forgotten = []
+            alr.id_forget = []
+            alr.acquisition_forget = []
 
     @staticmethod
     def get_id(dataset):

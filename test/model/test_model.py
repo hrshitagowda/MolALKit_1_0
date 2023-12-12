@@ -14,13 +14,13 @@ def al_results_check(save_dir):
     for i, row in df.iterrows():
         if i == 0:
             id_prior_al = set(json.loads(row['id_prior_al']))
-            id_forgotten = set(json.loads(row['id_forgotten']))
+            id_forget = set(json.loads(row['id_forget']))
             id_add = set(json.loads(row['id_add']))
         else:
             id_prior_al.update(id_add)
-            id_prior_al.difference_update(id_forgotten)
+            id_prior_al.difference_update(id_forget)
             assert id_prior_al == set(json.loads(row['id_prior_al']))
-            id_forgotten = set(json.loads(row['id_forgotten']))
+            id_forget = set(json.loads(row['id_forget']))
             id_add = set(json.loads(row['id_add']))
 
 
@@ -56,7 +56,7 @@ def test_classification(model):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
 
@@ -78,5 +78,5 @@ def test_regression(model):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)

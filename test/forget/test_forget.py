@@ -35,7 +35,7 @@ def test_classification_rf(forget_protocol, forget_para_set):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 138
+    assert len(active_learner.active_learning_traj.results) == 139
     al_results_check(save_dir)
 
 
@@ -63,7 +63,7 @@ def test_classification_rf_oob_error(forget_protocol, forget_para_set):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 138
+    assert len(active_learner.active_learning_traj.results) == 139
     al_results_check(save_dir)
 
 
@@ -93,5 +93,5 @@ def test_classification_gpr(model, forget_protocol, forget_para_set):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 138
+    assert len(active_learner.active_learning_traj.results) == 139
     al_results_check(save_dir)

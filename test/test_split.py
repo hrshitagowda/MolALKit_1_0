@@ -27,7 +27,7 @@ def test_classification(split):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
 
@@ -49,7 +49,7 @@ def test_classification_full():
     active_learner = run(args)
     assert (len(active_learner.dataset_train_selector) + len(active_learner.dataset_pool_selector) ==
             len(active_learner.dataset_val_selector))
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
 
@@ -70,7 +70,7 @@ def test_classification_no_val():
     assert args.data_val_selector is None
     active_learner = run(args)
     assert active_learner.dataset_val_selector is None
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
 
@@ -92,7 +92,7 @@ def test_regression(split):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
 
@@ -114,7 +114,7 @@ def test_regression_full():
     active_learner = run(args)
     assert (len(active_learner.dataset_train_selector) + len(active_learner.dataset_pool_selector) ==
             len(active_learner.dataset_val_selector))
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
 
@@ -135,5 +135,5 @@ def test_regression_no_val():
     assert args.data_val_selector is None
     active_learner = run(args)
     assert active_learner.dataset_val_selector is None
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)

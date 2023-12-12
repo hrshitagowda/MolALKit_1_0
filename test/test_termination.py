@@ -9,9 +9,9 @@ from model.test_model import run, al_results_check
 CWD = os.path.dirname(os.path.abspath(__file__))
 
 
-@pytest.mark.parametrize('params', [('stop_size', '5', 3),
-                                    ('stop_ratio', '0.1', 12),
-                                    ('stop_cutoff', '0.5', 60)])
+@pytest.mark.parametrize('params', [('stop_size', '5', 4),
+                                    ('stop_ratio', '0.1', 13),
+                                    ('stop_cutoff', '0.5', 61)])
 def test_classification(params):
     param1, param2, params3 = params
     save_dir = os.path.join(CWD, 'test')
@@ -34,9 +34,9 @@ def test_classification(params):
     al_results_check(save_dir)
 
 
-@pytest.mark.parametrize('params', [('min', -5, 34),
-                                    ('max', 0, 17),
-                                    ('-5', 2, 44)])
+@pytest.mark.parametrize('params', [('min', -5, 35),
+                                    ('max', 0, 18),
+                                    ('-5', 2, 45)])
 def test_regression(params):
     params1, params2, params3 = params
     save_dir = os.path.join(CWD, 'test')

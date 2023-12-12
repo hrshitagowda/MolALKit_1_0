@@ -730,7 +730,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
             assert self.stop_size >= 2
         # set the default maximum number of iterations of active learning
         if self.max_iter is None:
-            self.max_iter = 0 if self.data_pool_selector is None else len(self.data_pool_selector)
+            self.max_iter = 1 if self.data_pool_selector is None else 1 + len(self.data_pool_selector)
         # check the input for exploitive active learning
         if self.learning_type == 'exploitive':
             assert self.dataset_type == 'regression', 'exploitive active learning only support regression task.'

@@ -35,7 +35,7 @@ def test_classification(params_set):
         arguments.extend(['--n_query', n_query])
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 28
+    assert len(active_learner.active_learning_traj.results) == 29
     al_results_check(save_dir)
 
 
@@ -70,7 +70,7 @@ def test_regression1(params_set):
         arguments.extend(['--exploitive_target', exploitive_target, '--top_k', '0.1'])
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 21
+    assert len(active_learner.active_learning_traj.results) == 22
     al_results_check(save_dir)
 
 
@@ -95,5 +95,5 @@ def test_regression_exploitive(learning_type, exploitive_target):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)

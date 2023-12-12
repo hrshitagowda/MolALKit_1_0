@@ -27,7 +27,7 @@ def test_classification(metric):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
 
@@ -49,5 +49,5 @@ def test_regression(metric):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)

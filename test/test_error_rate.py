@@ -29,7 +29,7 @@ def test_classification(error_rate):
     ]
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
-    assert len(active_learner.active_learning_traj.results) == 3
+    assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
     df1 = pd.read_csv('%s/train_init.csv' % save_dir)
     df2 = pd.read_csv('%s/pool_init.csv' % save_dir)
