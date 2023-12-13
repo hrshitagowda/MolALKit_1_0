@@ -60,6 +60,29 @@ def test_classification(model):
     al_results_check(save_dir)
 
 
+@pytest.mark.parametrize('model', AVAILABLE_CLASSIFICATION_MODELS)
+def test_classification_cv(model):
+    save_dir = os.path.join(CWD, '..', 'test')
+    arguments = [
+        '--data_public', 'carcinogens_lagunin',
+        '--metrics', 'roc-auc',
+        '--learning_type', 'explorative',
+        '--model_config_selector', model,
+        '--split_type', 'scaffold_order',
+        '--split_sizes', '0.5', '0.5',
+        '--evaluate_stride', '1',
+        '--init_size', '10000',
+        '--output_details',
+        '--seed', '0',
+        '--save_dir', save_dir,
+        '--n_jobs', '4'
+    ]
+    args = ActiveLearningArgs().parse_args(arguments)
+    active_learner = run(args)
+    assert len(active_learner.active_learning_traj.results) == 1
+    al_results_check(save_dir)
+
+
 @pytest.mark.parametrize('model', AVAILABLE_REGRESSION_MODELS)
 def test_regression(model):
     save_dir = os.path.join(CWD, '..', 'test')
@@ -79,4 +102,28 @@ def test_regression(model):
     args = ActiveLearningArgs().parse_args(arguments)
     active_learner = run(args)
     assert len(active_learner.active_learning_traj.results) == 4
+    al_results_check(save_dir)
+
+
+
+@pytest.mark.parametrize('model', AVAILABLE_REGRESSION_MODELS)
+def test_regression_cv(model):
+    save_dir = os.path.join(CWD, '..', 'test')
+    arguments = [
+        '--data_public', 'test_regression',
+        '--metrics', 'rmse',
+        '--learning_type', 'explorative',
+        '--model_config_selector', model,
+        '--split_type', 'scaffold_order',
+        '--split_sizes', '0.5', '0.5',
+        '--evaluate_stride', '1',
+        '--init_size', '10000',
+        '--output_details',
+        '--seed', '0',
+        '--save_dir', save_dir,
+        '--n_jobs', '4'
+    ]
+    args = ActiveLearningArgs().parse_args(arguments)
+    active_learner = run(args)
+    assert len(active_learner.active_learning_traj.results) == 1
     al_results_check(save_dir)

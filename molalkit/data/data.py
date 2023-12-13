@@ -255,11 +255,7 @@ class Dataset:
 
     @property
     def y(self) -> np.ndarray:  # List[List[float]]
-        y = concatenate([d.targets for d in self.data], axis=0)
-        if y is not None and y.shape[1] == 1:
-            return y.ravel()
-        else:
-            return y
+        return concatenate([d.targets for d in self.data], axis=0)
 
     @property
     def N_tasks(self) -> int:

@@ -23,9 +23,9 @@ class BaseSklearnModel(BaseModel, ABC):
     def fit_alb_(train_data, sklearn_model):
         X = train_data.X
         y = train_data.y
-        if y.ndim == 2:
-            assert y.shape[1] == 1
-            y = y.ravel()
+        assert y.ndim == 2
+        assert y.shape[1] == 1
+        y = y.ravel()
         return sklearn_model.fit(X, y)
 
     @staticmethod

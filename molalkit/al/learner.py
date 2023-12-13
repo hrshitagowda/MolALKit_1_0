@@ -251,7 +251,7 @@ class ActiveLearner:
                     self.model_fitted = True
                 y_pred = self.model_selector.predict_value(self.dataset_val_selector)
                 if self.output_details:
-                    pd.DataFrame({'true': self.dataset_val_selector.y, 'pred': y_pred}).to_csv(
+                    pd.DataFrame({'true': self.dataset_val_selector.y.ravel(), 'pred': y_pred}).to_csv(
                         os.path.join(self.save_dir, f'selector_{self.current_iter}.csv'), index=False)
                 for metric in self.metrics:
                     metric_value = eval_metric_func(self.dataset_val_selector.y, y_pred, metric=metric)
@@ -265,7 +265,7 @@ class ActiveLearner:
                 model.fit_alb(self.dataset_train_evaluators[i])
                 y_pred = model.predict_value(self.dataset_val_evaluators[i])
                 if self.output_details:
-                    pd.DataFrame({'true': self.dataset_val_selector.y, 'pred': y_pred}).to_csv(
+                    pd.DataFrame({'true': self.dataset_val_selector.y.ravel(), 'pred': y_pred}).to_csv(
                         os.path.join(self.save_dir, f'evaluator_{i}_{self.current_iter}.csv'), index=False)
                 for metric in self.metrics:
                     metric_value = eval_metric_func(self.dataset_val_evaluators[i].y, y_pred, metric=metric)

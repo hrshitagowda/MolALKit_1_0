@@ -26,6 +26,7 @@ setuptools.setup(
     install_requires=[
         'typed-argument-parser',
         'rdkit',
+        'mgktools'
     ],
     entry_points={
         'console_scripts': [
