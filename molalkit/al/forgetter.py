@@ -103,9 +103,11 @@ class MinOOBErrorForgetter(BaseRandomForgetter):
                  ) -> Tuple[List[int], List[float]]:
         assert batch_size < len(data)
         assert isinstance(model, RFClassifier)
+        assert data.y.ndim == 2
+        assert data.y.shape[1] == 1
         y_oob_proba = model.oob_decision_function_
         # uncertainty calculation, normalized into 0 to 1
-        oob_error = np.absolute(y_oob_proba[:, 1] - data.y)
+        oob_error = np.absolute(y_oob_proba[:, 1] - data.y.ravel())
         # select the top-n points with least uncertainty
         forgotten_idx = get_topn_idx(oob_error, n=batch_size, target='min', cutoff=cutoff)
         acquisition = oob_error[np.array(forgotten_idx)].tolist() if forgotten_idx else []
@@ -133,9 +135,11 @@ class MinLOOErrorForgetter(BaseRandomForgetter):
         """
         assert batch_size < len(data)
         assert isinstance(model, GPRegressor)
-        y_loocv = model.predict_loocv(data.X, data.y, return_std=False)
+        assert data.y.ndim == 2
+        assert data.y.shape[1] == 1
+        y_loocv = model.predict_loocv(data.X, data.y.ravel(), return_std=False)
         # uncertainty calculation, normalized into 0 to 1
-        loo_error = np.absolute(y_loocv - data.y)
+        loo_error = np.absolute(y_loocv - data.y.ravel())
         # select the top-n points with least uncertainty
         forgotten_idx = get_topn_idx(loo_error, n=batch_size, target='min', cutoff=cutoff)
         acquisition = loo_error[np.array(forgotten_idx)].tolist() if forgotten_idx else []

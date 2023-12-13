@@ -99,7 +99,7 @@ class ActiveLearningTrajectory:
         results_dict['acquisition_add'] = [json.dumps(alr.acquisition_add, cls=NpEncoder) for alr in self.results]
         results_dict['id_forget'] = [json.dumps(alr.id_forget, cls=NpEncoder) for alr in self.results]
         results_dict['acquisition_forget'] = [json.dumps(alr.acquisition_forget,
-                                                            cls=NpEncoder) for alr in self.results]
+                                                         cls=NpEncoder) for alr in self.results]
         results_dict['id_prior_al'] = [json.dumps(alr.id_prior_al, cls=NpEncoder) for alr in self.results]
         return results_dict
 
@@ -306,9 +306,9 @@ class ActiveLearner:
             self.model_selector.fit_alb(self.dataset_train_selector)
         # forget algorithm is applied.
         forget_idx, acquisition = self.forgetter(model=self.model_selector,
-                                                    data=self.dataset_train_selector,
-                                                    batch_size=self.forgetter.batch_size,
-                                                    cutoff=self.forgetter.forget_cutoff)
+                                                 data=self.dataset_train_selector,
+                                                 batch_size=self.forgetter.batch_size,
+                                                 cutoff=self.forgetter.forget_cutoff)
         if forget_idx:
             alr.id_forget = [self.dataset_train_selector.data[i].id for i in forget_idx]
             alr.acquisition_forget = acquisition
