@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from logging import Logger
 from sklearn.metrics import *
+import scipy
 from ..args import Metric
 from .selection_method import BaseSelectionMethod, RandomSelectionMethod
 from .forgetter import BaseForgetter, RandomForgetter, FirstForgetter
@@ -40,9 +41,15 @@ def eval_metric_func(y, y_pred, metric: str) -> float:
     elif metric == 'mse':
         return mean_squared_error(y, y_pred)
     elif metric == 'rmse':
-        return np.sqrt(eval_metric_func(y, y_pred, 'mse'))
+        return mean_squared_error(y, y_pred, squared=False)
     elif metric == 'max':
         return np.max(abs(y - y_pred))
+    elif metric == 'spearman':
+        return scipy.stats.spearmanr(y, y_pred)[0]
+    elif metric == 'kendall':
+        return scipy.stats.kendalltau(y, y_pred)[0]
+    elif metric == 'pearson':
+        return scipy.stats.pearsonr(y, y_pred)[0]
     else:
         raise RuntimeError(f'Unsupported metrics {metric}')
 
@@ -254,7 +261,7 @@ class ActiveLearner:
                     pd.DataFrame({'true': self.dataset_val_selector.y.ravel(), 'pred': y_pred}).to_csv(
                         os.path.join(self.save_dir, f'selector_{self.current_iter}.csv'), index=False)
                 for metric in self.metrics:
-                    metric_value = eval_metric_func(self.dataset_val_selector.y, y_pred, metric=metric)
+                    metric_value = eval_metric_func(self.dataset_val_selector.y.ravel(), y_pred, metric=metric)
                     alr.results[f'{metric}_selector'] = metric_value
             # evaluate the percentage of top-k data selected in the training set
             if self.top_k_id is not None:
@@ -268,7 +275,7 @@ class ActiveLearner:
                     pd.DataFrame({'true': self.dataset_val_selector.y.ravel(), 'pred': y_pred}).to_csv(
                         os.path.join(self.save_dir, f'evaluator_{i}_{self.current_iter}.csv'), index=False)
                 for metric in self.metrics:
-                    metric_value = eval_metric_func(self.dataset_val_evaluators[i].y, y_pred, metric=metric)
+                    metric_value = eval_metric_func(self.dataset_val_evaluators[i].y.ravel(), y_pred, metric=metric)
                     alr.results[f'{metric}_evaluator_{i}'] = metric_value
         self.info('evaluating model performance finished.')
 

@@ -31,7 +31,7 @@ def test_classification(metric):
     al_results_check(save_dir)
 
 
-@pytest.mark.parametrize('metric', ['rmse', 'mae', 'mse', 'r2', 'max'])
+@pytest.mark.parametrize('metric', ['rmse', 'mae', 'mse', 'r2', 'max', 'spearman', 'kendall', 'pearson'])
 def test_regression(metric):
     save_dir = os.path.join(CWD, 'test')
     arguments = [
