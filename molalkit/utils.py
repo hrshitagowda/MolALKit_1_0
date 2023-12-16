@@ -103,6 +103,7 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               kernel=None,
               uncertainty_type: Literal['value', 'uncertainty'] = None,
               alpha: Union[float, str] = 1e-8,
+              C: float = 1.0,
               n_jobs: int = 8,
               seed: int = 0,
               logger: Logger = None,
@@ -138,7 +139,7 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
         elif model == 'support_vector_machine':
             assert dataset_type == 'classification'
             from molalkit.models.support_vector.SupportVectorClassifier import SVClassifier
-            return SVClassifier(kernel=kernel, probability=True)
+            return SVClassifier(kernel=kernel, C=C, probability=True)
         else:
             raise ValueError(f'unknown model: {model}')
     elif data_format == 'chemprop':
@@ -185,7 +186,7 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
         elif model == 'support_vector_machine':
             assert dataset_type == 'classification'
             from molalkit.models.support_vector.SupportVectorClassifier import SVClassifier
-            return SVClassifier(kernel=kernel, probability=True)
+            return SVClassifier(kernel=kernel, C=C, probability=True)
         else:
             raise ValueError(f'unknown model: {model}')
     else:

@@ -398,6 +398,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 kernel=self.kernel_selector,
                 uncertainty_type=self.model_config_selector_dict.get('uncertainty_type'),
                 alpha=self.model_config_selector_dict.get('alpha'),
+                C=self.model_config_selector_dict.get('C'),
                 n_jobs=self.n_jobs,
                 seed=self.seed,
                 logger=self.logger)
@@ -438,6 +439,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 kernel=self.kernel_evaluators[i],
                 uncertainty_type=model_config.get('uncertainty_type'),
                 alpha=model_config.get('alpha'),
+                C=self.model_config_selector_dict.get('C'),
                 n_jobs=self.n_jobs,
                 seed=self.seed,
                 logger=self.logger
@@ -874,6 +876,7 @@ class ReEvaluateArgs(CommonArgs):
                 kernel=self.kernel_evaluator,
                 uncertainty_type=self.model_config_evaluator_dict.get('uncertainty_type'),
                 alpha=self.model_config_evaluator_dict.get('alpha'),
+                C=self.model_config_selector_dict.get('C'),
                 n_jobs=self.n_jobs,
                 seed=self.seed,
                 logger=self.logger
