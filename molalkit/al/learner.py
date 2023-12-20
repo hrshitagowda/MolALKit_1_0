@@ -211,7 +211,8 @@ class ActiveLearner:
             if self.termination():
                 alr.id_add = alr.acquisition_add = alr.id_forget = alr.acquisition_forget = []
                 # save the results of the last frame of AL
-                self.active_learning_traj.results.append(alr)
+                if alr.n_iter != self.active_learning_traj.results[-1].n_iter:
+                    self.active_learning_traj.results.append(alr)
                 break
             # add sample
             self.add_samples(alr)
