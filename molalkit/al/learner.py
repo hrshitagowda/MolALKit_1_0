@@ -358,8 +358,8 @@ class ActiveLearner:
         f_al = os.path.join(path, filename)
         store = pickle.load(open(f_al, 'rb'))
         input = {}
-        for key in ['save_dir', 'dataset_type', 'metrics', 'learning_type', 'model_selector', 'dataset_train_selector',
-                    'dataset_pool_selector', 'dataset_val_evaluator', 'df_train', 'df_pool']:
+        for key in ['save_dir', 'selection_method', 'forgetter', 'model_selector',
+                    'dataset_train_selector', 'dataset_pool_selector', 'dataset_val_selector', 'metrics']:
             input[key] = store[key]
         dataset = cls(**input)
         dataset.__dict__.update(**store)
