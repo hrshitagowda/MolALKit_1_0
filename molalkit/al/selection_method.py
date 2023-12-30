@@ -140,9 +140,9 @@ class RandomSelectionMethod(BaseRandomSelectionMethod):
             idx = np.random.choice(range(len(data_pool)), self.batch_size, replace=False).tolist()
             mask = np.isin(range(len(data_pool)), idx)
             idx_remain = np.arange(len(data_pool))[~mask].tolist()
-            return idx, None, idx_remain
+            return idx, [], idx_remain
         else:
-            return list(range(len(data_pool))), None, []
+            return list(range(len(data_pool))), [], []
 
     @property
     def info(self) -> str:
@@ -163,9 +163,9 @@ class ClusterRandomSelectionMethod(BaseClusterSelectionMethod):
             # get idx for the remaining samples
             mask = np.isin(range(len(data_pool)), idx)
             idx_remain = np.arange(len(data_pool))[~mask].tolist()
-            return idx, None, idx_remain
+            return idx, [], idx_remain
         else:
-            return list(range(len(data_pool))), None, []
+            return list(range(len(data_pool))), [], []
 
     @property
     def info(self) -> str:
