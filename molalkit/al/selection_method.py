@@ -135,7 +135,7 @@ class BaseIterativeSelectionMethod(BaseSelectionMethod, ABC):
 
 
 class RandomSelectionMethod(BaseRandomSelectionMethod):
-    def __call__(self, data_pool, **kwargs) -> Tuple[List[int], None, List[int]]:
+    def __call__(self, data_pool, **kwargs) -> Tuple[List[int], List[float], List[int]]:
         if self.batch_size < len(data_pool):
             idx = np.random.choice(range(len(data_pool)), self.batch_size, replace=False).tolist()
             mask = np.isin(range(len(data_pool)), idx)
@@ -150,7 +150,7 @@ class RandomSelectionMethod(BaseRandomSelectionMethod):
 
 
 class ClusterRandomSelectionMethod(BaseClusterSelectionMethod):
-    def __call__(self, data_pool, kernel: Callable, **kwargs) -> Tuple[List[int], None, List[int]]:
+    def __call__(self, data_pool, kernel: Callable, **kwargs) -> Tuple[List[int], List[float], List[int]]:
         if self.batch_size < len(data_pool):
             # get idx for samples to conduct clustering
             if self.cluster_size < len(data_pool):
