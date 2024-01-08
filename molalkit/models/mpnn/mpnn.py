@@ -55,31 +55,7 @@ class MPNN:
                  seed: int = 0,
                  logger: Logger = None,
                  ):
-        """
-        args = TrainArgs(save_dir=save_dir,
-                         dataset_type=dataset_type,
-                         loss_function=loss_function,
-                         multiclass_num_classes=multiclass_num_classes,
-                         features_only=features_only,
-                         epochs=epochs,
-                         hidden_size=hidden_size,
-                         ffn_num_layers=ffn_num_layers,
-                         ffn_hidden_size=ffn_hidden_size,
-                         dropout=dropout,
-                         batch_size=batch_size,
-                         ensemble_size=ensemble_size,
-                         number_of_molecules=number_of_molecules,
-                         mpn_shared=mpn_shared,
-                         atom_messages=atom_messages,
-                         undirected=undirected,
-                         num_workers=n_jobs,
-                         class_balance=class_balance,
-                         checkpoint_dir=checkpoint_dir,
-                         checkpoint_frzn=checkpoint_frzn,
-                         frzn_ffn_layers=frzn_ffn_layers,
-                         freeze_first_only=freeze_first_only,
-                         seed=seed)
-        """
+
         args = TrainArgs()
         args.save_dir = save_dir
         args.dataset_type = dataset_type

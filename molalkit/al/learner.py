@@ -228,8 +228,8 @@ class ActiveLearner:
             self.info('Training set size = %i' % self.train_size)
             self.info('Pool set size = %i' % self.pool_size)
             self.active_learning_traj.results.append(alr)
-        df_traj = pd.DataFrame(self.active_learning_traj.get_results())
-        df_traj.to_csv(os.path.join(self.save_dir, 'al_traj.csv'), index=False)
+            self.write_traj()
+        self.write_traj()
         if self.save_cpt_stride:
             self.save(path=self.save_dir, overwrite=True)
 
@@ -328,6 +328,10 @@ class ActiveLearner:
         else:
             alr.id_forget = []
             alr.acquisition_forget = []
+
+    def write_traj(self):
+        df_traj = pd.DataFrame(self.active_learning_traj.get_results())
+        df_traj.to_csv(os.path.join(self.save_dir, 'al_traj.csv'), index=False)
 
     @staticmethod
     def get_id(dataset):
