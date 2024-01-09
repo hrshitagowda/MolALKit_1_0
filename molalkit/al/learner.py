@@ -121,7 +121,7 @@ class ActiveLearner:
                  stop_size: int = None, stop_cutoff: float = None,
                  n_query: int = None,
                  evaluate_stride: int = None, output_details: bool = False, kernel: Callable = None,
-                 save_cpt_stride: int = None,
+                 save_cpt_stride: int = None, write_traj_stride: int = None,
                  seed: int = 0,
                  logger: Logger = None):
         self.save_dir = save_dir
@@ -145,6 +145,7 @@ class ActiveLearner:
         self.output_details = output_details
         self.kernel = kernel  # used for cluster selection method
         self.save_cpt_stride = save_cpt_stride
+        self.write_traj_stride = write_traj_stride
 
         self.seed = seed
         if logger is not None:
@@ -228,7 +229,8 @@ class ActiveLearner:
             self.info('Training set size = %i' % self.train_size)
             self.info('Pool set size = %i' % self.pool_size)
             self.active_learning_traj.results.append(alr)
-            self.write_traj()
+            if self.write_traj_stride is not None and n_iter % self.write_traj_stride == 0:
+                self.write_traj()
         self.write_traj()
         if self.save_cpt_stride:
             self.save(path=self.save_dir, overwrite=True)

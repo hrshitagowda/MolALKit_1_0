@@ -349,6 +349,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     """the maximum number of iterations."""
     save_cpt_stride: int = None
     """save checkpoint file every no. steps of active learning iteration."""
+    write_traj_stride: int = None
+    """write trajectory file every no. steps of active learning iteration."""
     load_checkpoint: bool = False
     """load checkpoint file and continue the active learning."""
     # Arguments for forgetting active learning.
