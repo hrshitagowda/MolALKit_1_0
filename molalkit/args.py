@@ -371,8 +371,10 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 dataset_type=self.dataset_type,
                 model=self.model_config_selector_dict.get('model'),
                 save_dir='%s/selector' % self.save_dir,
+                data_path=self.data_path,
+                smiles_columns=self.pure_columns,
+                target_columns=self.target_columns,
                 loss_function=self.model_config_selector_dict.get('loss_function'),
-                num_tasks=len(self.target_columns),
                 multiclass_num_classes=self.model_config_selector_dict.get('loss_function') or 3,
                 features_generator=self.features_generator_selector,
                 no_features_scaling=self.model_config_selector_dict.get('no_features_scaling') or False,
@@ -400,8 +402,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 alpha=self.model_config_selector_dict.get('alpha'),
                 C=self.model_config_selector_dict.get('C'),
                 n_jobs=self.n_jobs,
-                seed=self.seed,
-                logger=self.logger)
+                seed=self.seed)
         return self._model_selector
 
     @property
@@ -412,8 +413,10 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 dataset_type=self.dataset_type,
                 model=model_config.get('model'),
                 save_dir='%s/evaluator_%d' % (self.save_dir, i),
+                data_path=self.data_path,
+                smiles_columns=self.pure_columns,
+                target_columns=self.target_columns,
                 loss_function=model_config.get('loss_function'),
-                num_tasks=len(self.target_columns),
                 multiclass_num_classes=model_config.get('loss_function') or 3,
                 features_generator=self.features_generator_evaluators[i],
                 no_features_scaling=model_config.get('no_features_scaling') or False,
@@ -442,7 +445,6 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 C=self.model_config_selector_dict.get('C'),
                 n_jobs=self.n_jobs,
                 seed=self.seed,
-                logger=self.logger
             ) for i, model_config in enumerate(self.model_config_evaluators_dict)]
         return self._model_evaluators
 

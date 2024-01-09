@@ -75,9 +75,11 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               dataset_type: Literal['regression', 'classification', 'multiclass'],
               model: Literal['random_forest', 'naive_bayes', 'gaussian_process', 'support_vector_machine'],
               save_dir: str = None,
+              data_path: str = None,
+              smiles_columns: List[str] = None,
+              target_columns: List[str] = None,
               loss_function: Literal['mse', 'bounded_mse', 'binary_cross_entropy', 'cross_entropy', 'mcc', 'sid',
               'wasserstein', 'mve', 'evidential', 'dirichlet'] = None,
-              num_tasks: int = 1,
               multiclass_num_classes: int = 3,
               features_generator=None,
               no_features_scaling: bool = False,
@@ -105,9 +107,7 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               alpha: Union[float, str] = 1e-8,
               C: float = 1.0,
               n_jobs: int = 8,
-              seed: int = 0,
-              logger: Logger = None,
-              ):
+              seed: int = 0):
     if alpha.__class__ == str:
         alpha = float(open(alpha).read())
 
@@ -145,9 +145,11 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
     elif data_format == 'chemprop':
         from molalkit.models.mpnn.mpnn import MPNN
         return MPNN(save_dir=save_dir,
+                    data_path=data_path,
+                    smiles_columns=smiles_columns,
+                    target_columns=target_columns,
                     dataset_type=dataset_type,
                     loss_function=loss_function,
-                    num_tasks=num_tasks,
                     multiclass_num_classes=multiclass_num_classes,
                     features_generator=features_generator,
                     no_features_scaling=no_features_scaling,
@@ -195,7 +197,8 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
 
 def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
                mgk_files: List[str] = None,
-               features_kernel_type: Literal['linear', 'dot_product', 'rbf'] = None,
+               features_kernel_type: Literal['linear',
+                                             'dot_product', 'rbf'] = None,
                features_hyperparameters: Union[float, List[float]] = None,
                features_hyperparameters_file: str = None,
                dataset: Dataset = None,
@@ -253,9 +256,11 @@ def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
                     features_hyperparameters_bounds="fixed",
                     features_hyperparameters_file=features_hyperparameters_file
                 )
-                kernel_dict = kernel_config.get_kernel_dict(dataset.X, dataset.X_repr.ravel())
+                kernel_dict = kernel_config.get_kernel_dict(
+                    dataset.X, dataset.X_repr.ravel())
                 dataset.graph_kernel_type = 'pre-computed'
-                pickle.dump(kernel_dict, open(kernel_pkl_path, 'wb'), protocol=4)
+                pickle.dump(kernel_dict, open(
+                    kernel_pkl_path, 'wb'), protocol=4)
                 return get_kernel_config(
                     dataset=dataset,
                     graph_kernel_type='pre-computed',
