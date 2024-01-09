@@ -219,11 +219,6 @@ class ActiveLearner:
             self.add_samples(alr)
             # forget sample
             self.forget_samples(alr)
-            # save checkpoint file
-            if self.save_cpt_stride is not None and n_iter % self.save_cpt_stride == 0:
-                self.save(path=self.save_dir, filename='al_temp.pkl', overwrite=True)
-                shutil.move(os.path.join(self.save_dir, 'al_temp.pkl'), os.path.join(self.save_dir, 'al.pkl'))
-                self.info('save checkpoint file %s/al.pkl' % self.save_dir)
 
             self.current_iter += 1
             self.info('Training set size = %i' % self.train_size)
@@ -231,6 +226,11 @@ class ActiveLearner:
             self.active_learning_traj.results.append(alr)
             if self.write_traj_stride is not None and n_iter % self.write_traj_stride == 0:
                 self.write_traj()
+            # save checkpoint file
+            if self.save_cpt_stride is not None and n_iter % self.save_cpt_stride == 0:
+                self.save(path=self.save_dir, filename='al_temp.pkl', overwrite=True)
+                shutil.move(os.path.join(self.save_dir, 'al_temp.pkl'), os.path.join(self.save_dir, 'al.pkl'))
+                self.info('save checkpoint file %s/al.pkl' % self.save_dir)
         self.write_traj()
         if self.save_cpt_stride:
             self.save(path=self.save_dir, overwrite=True)
