@@ -102,12 +102,14 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               checkpoint_frzn: str = None,
               frzn_ffn_layers: int = 0,
               freeze_first_only: bool = False,
+              continuous_fit: bool = False,
               kernel=None,
               uncertainty_type: Literal['value', 'uncertainty'] = None,
               alpha: Union[float, str] = 1e-8,
               C: float = 1.0,
               n_jobs: int = 8,
-              seed: int = 0):
+              seed: int = 0,
+              logger: Logger = None):
     if alpha.__class__ == str:
         alpha = float(open(alpha).read())
 
@@ -172,9 +174,10 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
                     checkpoint_frzn=checkpoint_frzn,
                     frzn_ffn_layers=frzn_ffn_layers,
                     freeze_first_only=freeze_first_only,
+                    continuous_fit=continuous_fit,
                     n_jobs=n_jobs,
                     seed=seed,
-                    logger=EmptyLogger())
+                    logger=logger or EmptyLogger())
     elif data_format == 'mgktools':
         if model == 'gaussian_process_regression':
             assert dataset_type in ['regression', 'classification']

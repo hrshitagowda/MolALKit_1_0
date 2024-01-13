@@ -399,12 +399,14 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 checkpoint_frzn=self.model_config_selector_dict.get('checkpoint_frzn'),
                 frzn_ffn_layers=self.model_config_selector_dict.get('frzn_ffn_layers') or 0,
                 freeze_first_only=self.model_config_selector_dict.get('freeze_first_only') or False,
+                continuous_fit=self.model_config_selector_dict.get('continuous_fit') or False,
                 kernel=self.kernel_selector,
                 uncertainty_type=self.model_config_selector_dict.get('uncertainty_type'),
                 alpha=self.model_config_selector_dict.get('alpha'),
                 C=self.model_config_selector_dict.get('C'),
                 n_jobs=self.n_jobs,
-                seed=self.seed)
+                seed=self.seed,
+                logger=self.logger)
         return self._model_selector
 
     @property
@@ -441,12 +443,14 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 checkpoint_frzn=model_config.get('checkpoint_frzn'),
                 frzn_ffn_layers=model_config.get('frzn_ffn_layers') or 0,
                 freeze_first_only=model_config.get('freeze_first_only') or False,
+                continuous_fit=model_config.get('continuous_fit') or False,
                 kernel=self.kernel_evaluators[i],
                 uncertainty_type=model_config.get('uncertainty_type'),
                 alpha=model_config.get('alpha'),
                 C=self.model_config_selector_dict.get('C'),
                 n_jobs=self.n_jobs,
                 seed=self.seed,
+                logger=self.logger
             ) for i, model_config in enumerate(self.model_config_evaluators_dict)]
         return self._model_evaluators
 
