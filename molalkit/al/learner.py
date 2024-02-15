@@ -368,6 +368,6 @@ class ActiveLearner:
         for key in ['save_dir', 'selection_method', 'forgetter', 'model_selector',
                     'dataset_train_selector', 'dataset_pool_selector', 'dataset_val_selector', 'metrics']:
             input[key] = store[key]
-        dataset = cls(**input)
-        dataset.__dict__.update(**store)
-        return dataset
+        learner = cls(**input)
+        learner.__dict__.update(**store)
+        return learner

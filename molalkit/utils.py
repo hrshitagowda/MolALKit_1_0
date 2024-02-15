@@ -144,6 +144,20 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
             assert dataset_type == 'classification'
             from molalkit.models.support_vector.SupportVectorClassifier import SVClassifier
             return SVClassifier(kernel=kernel, C=C, probability=True)
+        elif model == 'adaboost':
+            if dataset_type == 'regression':
+                from molalkit.models.adaboost.AdaBoostRegressor import AdaBoostRegressor
+                return AdaBoostRegressor(random_state=seed)
+            else:
+                from molalkit.models.adaboost.AdaBoostClassifier import AdaBoostClassifier
+                return AdaBoostClassifier(random_state=seed)
+        elif model == 'xgboost':
+            if dataset_type == 'regression':
+                from molalkit.models.xgboost.XGBRegressor import XGBRegressor
+                return XGBRegressor(random_state=seed)
+            else:
+                from molalkit.models.xgboost.XGBClassifier import XGBClassifier
+                return XGBClassifier(random_state=seed)
         else:
             raise ValueError(f'unknown model: {model}')
     elif data_format == 'chemprop':
