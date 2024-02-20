@@ -731,7 +731,6 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     def process_args(self) -> None:
         super().process_args()
         if self.model_config_selector_dict.get('graph_kernel_type') == 'graph':
-            assert len(self.data_pool_selector) != 0
             self.data_train_selector.unify_datatype(self.data_pool_selector.X_graph)
             if self.data_val_selector is not None and len(self.data_val_selector) != 0:
                 self.data_train_selector.unify_datatype(self.data_val_selector.X_graph)
