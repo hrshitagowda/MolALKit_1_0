@@ -731,9 +731,16 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     def process_args(self) -> None:
         super().process_args()
         if self.model_config_selector_dict.get('graph_kernel_type') == 'graph':
-            self.data_train_selector.unify_datatype(self.data_pool_selector.X_graph)
+            if self.data_pool_selector is not None and len(self.data_pool_selector) != 0:
+                self.data_train_selector.unify_datatype(self.data_pool_selector.X_graph)
             if self.data_val_selector is not None and len(self.data_val_selector) != 0:
                 self.data_train_selector.unify_datatype(self.data_val_selector.X_graph)
+        for i, model_config_evaluator_dict in self.model_config_evaluators_dict:
+            if model_config_evaluator_dict.get('graph_kernel_type') == 'graph':
+                if self.data_pool_evaluators[i] is not None and len(self.data_pool_evaluators[i]) != 0:
+                    self.data_train_evaluators[i].unify_datatype(self.data_pool_evaluators[i].X_graph)
+                if self.data_val_evaluators[i] is not None and len(self.data_val_evaluators[i]) != 0:
+                    self.data_train_evaluators[i].unify_datatype(self.data_val_evaluators[i].X_graph)
         # get stop_size from stop_ratio
         if self.stop_ratio is not None:
             if self.stop_size is None:

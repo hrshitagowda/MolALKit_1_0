@@ -174,19 +174,19 @@ class ActiveLearner:
         elif self.stop_cutoff is not None and len(self.active_learning_traj.results) > 0:
             acquisition = self.active_learning_traj.results[-1].acquisition_add
             if not hasattr(self.selection_method, 'target') or self.selection_method.target == 'max':
-                if np.min(acquisition) <= self.stop_cutoff:
+                if len(acquisition) == 0 or np.min(acquisition) <= self.stop_cutoff:
                     self.info(f'Terminating active learning: acquisition < stop_cutoff {self.stop_cutoff}')
                     return True
                 else:
                     return False
             elif self.selection_method.target == 'min':
-                if np.max(acquisition) >= self.stop_cutoff:
+                if len(acquisition) == 0 or np.max(acquisition) >= self.stop_cutoff:
                     self.info(f'Terminating active learning: acquisition > stop_cutoff {self.stop_cutoff}')
                     return True
                 else:
                     return False
             else:
-                if np.max(np.abs(np.array(acquisition) - self.selection_method.target)) >= self.stop_cutoff:
+                if len(acquisition) == 0 or np.max(np.abs(np.array(acquisition) - self.selection_method.target)) >= self.stop_cutoff:
                     self.info(
                         f'Terminating active learning: abs(acquisition - target) > stop_cutoff {self.stop_cutoff}')
                     return True

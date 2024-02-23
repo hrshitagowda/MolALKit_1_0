@@ -9,12 +9,12 @@ from test_model import al_results_check
 
 
 CWD = os.path.dirname(os.path.abspath(__file__))
-MGK_CLASSIFICATION_MODELS = []
+MGK_CLASSIFICATION_MODELS = ['GPR-MGK-RDKit_Config']
 for model in AVAILABLE_MODELS:
     if model.startswith('GaussianProcess') or model.startswith('SupportVectorMachine'):
         if 'MarginalizedGraphKernel' in model:
             MGK_CLASSIFICATION_MODELS.append(model)
-MGK_REGRESSION_MODELS = []
+MGK_REGRESSION_MODELS = ['GPR-MGK-RDKit_Config']
 for model in AVAILABLE_MODELS:
     if model.startswith('GaussianProcessRegressionPosteriorUncertainty'):
         if 'MarginalizedGraphKernel' in model:

@@ -205,14 +205,18 @@ class ExplorativeParitialQuerySelectionMethod(BaseRandomSelectionMethod, BasePar
         y_std = model.predict_uncertainty(data_query)
         # get idx and predicted uncertainty for selected samples
         idx_ = np.array(get_topn_idx(y_std, n=self.batch_size))
-        acquisition = y_std[idx_].tolist()
-        idx = query_idx[idx_].tolist()
+        acquisition = y_std[idx_]
+        idx = query_idx[idx_]
         if stop_cutoff is not None:
+            idx = idx[acquisition > stop_cutoff].tolist()
+            acquisition = acquisition[acquisition > stop_cutoff].tolist()
             # confident samples will be removed in the pool set and will not be considered in the future AL.
             idx_unconfident = query_idx[np.where(y_std > stop_cutoff)[0]]
             mask = np.isin(idx_unconfident, idx)
             idx_remain += idx_unconfident[~mask].tolist()
         else:
+            idx = idx.tolist()
+            acquisition = acquisition.tolist()
             mask = np.isin(range(len(data_pool)), idx)
             idx_remain = np.arange(len(data_pool))[~mask].tolist()
         return idx, acquisition, idx_remain
@@ -267,14 +271,18 @@ class ClusterExplorativeParitialQuerySelectionMethod(BaseClusterSelectionMethod,
         else:
             idx_ = np.array(self.get_idx_cluster(data_pool, kernel, idx_candidates))
         # get idx for selected and confident samples
-        idx = idx_candidates[idx_].tolist()
-        acquisition = y_std[idx_candidates_[idx_]].tolist()
+        idx = idx_candidates[idx_]
+        acquisition = y_std[idx_candidates_[idx_]]
         if stop_cutoff is not None:
+            idx = idx[acquisition > stop_cutoff].tolist()
+            acquisition = acquisition[acquisition > stop_cutoff].tolist()
             # confident will be removed in the pool set and will not be considered in the future.
             idx_unconfident = query_idx[np.where(y_std > stop_cutoff)[0]]
             mask = np.isin(idx_unconfident, idx)
             idx_remain += idx_unconfident[~mask].tolist()
         else:
+            idx = idx.tolist()
+            acquisition = acquisition.tolist()
             mask = np.isin(range(len(data_pool)), idx)
             idx_remain = np.arange(len(data_pool))[~mask].tolist()
         return idx, acquisition, idx_remain
