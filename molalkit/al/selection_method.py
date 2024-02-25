@@ -70,6 +70,7 @@ class BaseRandomSelectionMethod(BaseSelectionMethod, ABC):
 class BaseClusterSelectionMethod(BaseRandomSelectionMethod, ABC):
     def __init__(self, batch_size: int = 1, cluster_size: int = None, seed: int = 0):
         super().__init__(batch_size=batch_size, seed=seed)
+        assert batch_size > 1, 'batch_size should be larger than 1 for cluster selection method.'
         if cluster_size is None:
             self.cluster_size = batch_size * 20
         else:
@@ -196,7 +197,7 @@ class ExplorativeParitialQuerySelectionMethod(BaseRandomSelectionMethod, BasePar
         self.n_query = n_query
         assert batch_size <= n_query
 
-    def __call__(self, model, data_pool, stop_cutoff, **kwargs) -> Tuple[List[int], List[float], List[int]]:
+    def __call__(self, model, data_pool, stop_cutoff, confidence_cutoff, **kwargs) -> Tuple[List[int], List[float], List[int]]:
         # get partial data for active learning. Other data won't be considered in this iteration.
         data_query, query_idx = self.get_partial_data(data_pool, self.n_query)
         mask = np.isin(range(len(data_pool)), query_idx)
@@ -204,21 +205,25 @@ class ExplorativeParitialQuerySelectionMethod(BaseRandomSelectionMethod, BasePar
         # get predicted uncertainty
         y_std = model.predict_uncertainty(data_query)
         # get idx and predicted uncertainty for selected samples
-        idx_ = np.array(get_topn_idx(y_std, n=self.batch_size))
-        acquisition = y_std[idx_]
-        idx = query_idx[idx_]
-        if stop_cutoff is not None:
-            idx = idx[acquisition > stop_cutoff].tolist()
-            acquisition = acquisition[acquisition > stop_cutoff].tolist()
-            # confident samples will be removed in the pool set and will not be considered in the future AL.
-            idx_unconfident = query_idx[np.where(y_std > stop_cutoff)[0]]
-            mask = np.isin(idx_unconfident, idx)
-            idx_remain += idx_unconfident[~mask].tolist()
-        else:
-            idx = idx.tolist()
-            acquisition = acquisition.tolist()
-            mask = np.isin(range(len(data_pool)), idx)
+        idx_ = np.array(get_topn_idx(y_std, n=self.batch_size, target='max', cutoff=stop_cutoff))
+        if len(idx_) == 0:
+            # when no samples are selected, all samples are removed from the pool set and won't be considered in AL anymore.
+            idx = []
+            acquisition = []
+            mask = np.isin(range(len(data_pool)), query_idx)
             idx_remain = np.arange(len(data_pool))[~mask].tolist()
+        else:
+            acquisition = y_std[idx_].tolist()
+            idx = query_idx[idx_].tolist()
+            if confidence_cutoff is not None:
+                # samples with predicted uncertainty < confidence_cutoff are removed from the pool set and won't be considered in AL anymore.
+                idx_unconfident = query_idx[np.where(y_std > confidence_cutoff)[0]]
+                mask = np.isin(idx_unconfident, idx)
+                idx_remain += idx_unconfident[~mask].tolist()
+            else:
+                # only the samples selected by AL are removed from the pool set.
+                mask = np.isin(range(len(data_pool)), idx)
+                idx_remain = np.arange(len(data_pool))[~mask].tolist()
         return idx, acquisition, idx_remain
 
     @property
@@ -255,7 +260,7 @@ class ClusterExplorativeParitialQuerySelectionMethod(BaseClusterSelectionMethod,
         super().__init__(batch_size=batch_size, cluster_size=cluster_size, seed=seed)
         self.n_query = n_query
 
-    def __call__(self, model, data_pool, kernel: Callable, stop_cutoff, **kwargs) -> Tuple[List[int], List[float], List[int]]:
+    def __call__(self, model, data_pool, kernel: Callable, stop_cutoff, confidence_cutoff, **kwargs) -> Tuple[List[int], List[float], List[int]]:
         # get partial data for active learning. Other data won't be considered in this iteration.
         data_query, query_idx = self.get_partial_data(data_pool, self.n_query)
         mask = np.isin(range(len(data_pool)), query_idx)
@@ -263,28 +268,33 @@ class ClusterExplorativeParitialQuerySelectionMethod(BaseClusterSelectionMethod,
         # get predicted uncertainty
         y_std = model.predict_uncertainty(data_query)
         # get idx for samples to conduct clustering
-        idx_candidates_ = np.array(get_topn_idx(y_std, n=self.cluster_size))
+        idx_candidates_ = np.array(get_topn_idx(y_std, n=self.cluster_size, target='max', cutoff=stop_cutoff))
         idx_candidates = query_idx[idx_candidates_]
         # get idx after clustering, each cluster has one sample
         if len(idx_candidates) < self.batch_size:
             idx_ = np.arange(len(idx_candidates))
         else:
             idx_ = np.array(self.get_idx_cluster(data_pool, kernel, idx_candidates))
-        # get idx for selected and confident samples
-        idx = idx_candidates[idx_]
-        acquisition = y_std[idx_candidates_[idx_]]
-        if stop_cutoff is not None:
-            idx = idx[acquisition > stop_cutoff].tolist()
-            acquisition = acquisition[acquisition > stop_cutoff].tolist()
-            # confident will be removed in the pool set and will not be considered in the future.
-            idx_unconfident = query_idx[np.where(y_std > stop_cutoff)[0]]
-            mask = np.isin(idx_unconfident, idx)
-            idx_remain += idx_unconfident[~mask].tolist()
-        else:
-            idx = idx.tolist()
-            acquisition = acquisition.tolist()
-            mask = np.isin(range(len(data_pool)), idx)
+
+        if len(idx_) == 0:
+            # when no samples are selected, all samples are removed from the pool set and won't be considered in AL anymore.
+            idx = []
+            acquisition = []
+            mask = np.isin(range(len(data_pool)), query_idx)
             idx_remain = np.arange(len(data_pool))[~mask].tolist()
+        else:
+            # get idx for selected and confident samples
+            idx = idx_candidates[idx_]
+            acquisition = y_std[idx_candidates_[idx_]]
+            if confidence_cutoff is not None:
+                # samples with predicted uncertainty < confidence_cutoff are removed from the pool set and won't be considered in AL anymore.
+                idx_unconfident = query_idx[np.where(y_std > confidence_cutoff)[0]]
+                mask = np.isin(idx_unconfident, idx)
+                idx_remain += idx_unconfident[~mask].tolist()
+            else:
+                # only the samples selected by AL are removed from the pool set.
+                mask = np.isin(range(len(data_pool)), idx)
+                idx_remain = np.arange(len(data_pool))[~mask].tolist()
         return idx, acquisition, idx_remain
 
     @property

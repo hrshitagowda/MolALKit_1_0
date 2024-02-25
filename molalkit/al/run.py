@@ -34,6 +34,7 @@ def run(args: ActiveLearningArgs):
                                        yoked_learning_only=args.yoked_learning_only,
                                        stop_size=args.stop_size,
                                        stop_cutoff=args.stop_cutoff,
+                                       confidence_cutoff=args.confidence_cutoff,
                                        evaluate_stride=args.evaluate_stride,
                                        write_traj_stride=args.write_traj_stride,
                                        output_details=args.output_details,

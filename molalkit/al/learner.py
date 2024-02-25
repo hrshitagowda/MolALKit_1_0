@@ -118,7 +118,7 @@ class ActiveLearner:
                  model_evaluators=None, dataset_train_evaluators=None,
                  dataset_pool_evaluators=None, dataset_val_evaluators=None,
                  yoked_learning_only: bool = False,
-                 stop_size: int = None, stop_cutoff: float = None,
+                 stop_size: int = None, stop_cutoff: float = None, confidence_cutoff: float = None,
                  n_query: int = None,
                  evaluate_stride: int = None, output_details: bool = False, kernel: Callable = None,
                  save_cpt_stride: int = None, write_traj_stride: int = None,
@@ -140,6 +140,7 @@ class ActiveLearner:
         self.yoked_learning_only = yoked_learning_only
         self.stop_size = stop_size
         self.stop_cutoff = stop_cutoff
+        self.confidence_cutoff = confidence_cutoff
         self.n_query = n_query
         self.evaluate_stride = evaluate_stride
         self.output_details = output_details
@@ -174,21 +175,20 @@ class ActiveLearner:
         elif self.stop_cutoff is not None and len(self.active_learning_traj.results) > 0:
             acquisition = self.active_learning_traj.results[-1].acquisition_add
             if not hasattr(self.selection_method, 'target') or self.selection_method.target == 'max':
-                if len(acquisition) == 0 or np.min(acquisition) <= self.stop_cutoff:
+                if self.n_query is None and (len(acquisition) == 0 or np.min(acquisition) <= self.stop_cutoff):
                     self.info(f'Terminating active learning: acquisition < stop_cutoff {self.stop_cutoff}')
                     return True
                 else:
                     return False
             elif self.selection_method.target == 'min':
-                if len(acquisition) == 0 or np.max(acquisition) >= self.stop_cutoff:
+                if  self.n_query is None and (len(acquisition) == 0 or np.max(acquisition) >= self.stop_cutoff):
                     self.info(f'Terminating active learning: acquisition > stop_cutoff {self.stop_cutoff}')
                     return True
                 else:
                     return False
             else:
-                if len(acquisition) == 0 or np.max(np.abs(np.array(acquisition) - self.selection_method.target)) >= self.stop_cutoff:
-                    self.info(
-                        f'Terminating active learning: abs(acquisition - target) > stop_cutoff {self.stop_cutoff}')
+                if self.n_query is None and (len(acquisition) == 0 or np.max(np.abs(np.array(acquisition) - self.selection_method.target)) >= self.stop_cutoff):
+                    self.info(f'Terminating active learning: abs(acquisition - target) > stop_cutoff {self.stop_cutoff}')
                     return True
         else:
             return False
@@ -290,7 +290,8 @@ class ActiveLearner:
                                                                       data_train=self.dataset_train_selector,
                                                                       data_pool=self.dataset_pool_selector,
                                                                       kernel=self.kernel,
-                                                                      stop_cutoff=self.stop_cutoff)
+                                                                      stop_cutoff=self.stop_cutoff,
+                                                                      confidence_cutoff=self.confidence_cutoff)
         alr.id_add = [self.dataset_pool_selector.data[i].id for i in selected_idx]
         alr.acquisition_add = acquisition
         # transfer data from pool to train.

@@ -345,6 +345,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     """Stop active learning when the selected molecules reach the number."""
     stop_cutoff: float = None
     """Stop active learning when the acquisition function reach the cutoff."""
+    confidence_cutoff: float = None
+    """Stop active learning when the confidence of the model reach the cutoff."""
     max_iter: int = None
     """the maximum number of iterations."""
     save_cpt_stride: int = None
@@ -798,6 +800,12 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
         else:
             assert self.metrics is None
             assert self.evaluate_stride is None
+
+        if self.stop_cutoff is not None:
+            if self.confidence_cutoff is None:
+                self.confidence_cutoff = self.stop_cutoff
+            else:
+                assert self.confidence_cutoff <= self.stop_cutoff
 
     def flip_labels(self, datasets, error_index):
         i = 0
