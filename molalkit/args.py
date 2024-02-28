@@ -463,97 +463,49 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     @property
     def data_train_selector(self):
         if not hasattr(self, '_data_train_selector'):
-            self._data_train_selector = get_data(
-                data_format=self.model_config_selector_dict['data_format'],
-                path='%s/train_init.csv' % self.save_dir,
-                pure_columns=self.pure_columns,
-                mixture_columns=self.mixture_columns,
-                target_columns=self.target_columns,
-                feature_columns=self.feature_columns,
-                features_generator=self.features_generator_selector,
-                features_combination=self.model_config_selector_dict.get('features_combination'),
-                graph_kernel_type=self.model_config_selector_dict.get('graph_kernel_type'),
-                n_jobs=self.n_jobs)
+            self._data_train_selector = get_subset(self.data_full_selector, 
+                                                   idx=pd.read_csv('%s/train_init.csv' % self.save_dir)['id'],
+                                                   unique_data_idx=True)
         return self._data_train_selector
 
     @property
     def data_pool_selector(self):
         if not hasattr(self, '_data_pool_selector'):
-            self._data_pool_selector = get_data(
-                data_format=self.model_config_selector_dict['data_format'],
-                path='%s/pool_init.csv' % self.save_dir,
-                pure_columns=self.pure_columns,
-                mixture_columns=self.mixture_columns,
-                target_columns=self.target_columns,
-                feature_columns=self.feature_columns,
-                features_generator=self.features_generator_selector,
-                features_combination=self.model_config_selector_dict.get('features_combination'),
-                graph_kernel_type=self.model_config_selector_dict.get('graph_kernel_type'),
-                n_jobs=self.n_jobs)
+            self._data_pool_selector = get_subset(self.data_full_selector,
+                                                  idx=pd.read_csv('%s/pool_init.csv' % self.save_dir)['id'],
+                                                  unique_data_idx=True)
         return self._data_pool_selector
 
     @property
     def data_val_selector(self):
         if not hasattr(self, '_data_val_selector'):
-            self._data_val_selector = get_data(
-                data_format=self.model_config_selector_dict['data_format'],
-                path='%s/val.csv' % self.save_dir,
-                pure_columns=self.pure_columns,
-                mixture_columns=self.mixture_columns,
-                target_columns=self.target_columns,
-                feature_columns=self.feature_columns,
-                features_generator=self.features_generator_selector,
-                features_combination=self.model_config_selector_dict.get('features_combination'),
-                graph_kernel_type=self.model_config_selector_dict.get('graph_kernel_type'),
-                n_jobs=self.n_jobs)
+            self._data_val_selector = get_subset(self.data_full_selector,
+                                                 idx=pd.read_csv('%s/val.csv' % self.save_dir)['id'],
+                                                 unique_data_idx=True)
         return self._data_val_selector
 
     @property
     def data_train_evaluators(self):
         if not hasattr(self, '_data_train_evaluators'):
-            self._data_train_evaluators = [get_data(
-                data_format=model_config['data_format'],
-                path='%s/train_init.csv' % self.save_dir,
-                pure_columns=self.pure_columns,
-                mixture_columns=self.mixture_columns,
-                target_columns=self.target_columns,
-                feature_columns=self.feature_columns,
-                features_generator=self.features_generator_evaluators[i],
-                features_combination=model_config.get('features_combination'),
-                graph_kernel_type=model_config.get('graph_kernel_type'),
-                n_jobs=self.n_jobs) for i, model_config in enumerate(self.model_config_evaluators_dict)]
+            self._data_train_evaluators = [get_subset(data,
+                                                      idx=pd.read_csv('%s/train_init.csv' % self.save_dir)['id'],
+                                                      unique_data_idx=True) for data in self.data_full_evaluators]
         return self._data_train_evaluators
 
     @property
     def data_pool_evaluators(self):
         if not hasattr(self, '_data_pool_evaluators'):
-            self._data_pool_evaluators = [get_data(
-                data_format=model_config['data_format'],
-                path='%s/pool_init.csv' % self.save_dir,
-                pure_columns=self.pure_columns,
-                mixture_columns=self.mixture_columns,
-                target_columns=self.target_columns,
-                feature_columns=self.feature_columns,
-                features_generator=self.features_generator_evaluators[i],
-                features_combination=model_config.get('features_combination'),
-                graph_kernel_type=model_config.get('graph_kernel_type'),
-                n_jobs=self.n_jobs) for i, model_config in enumerate(self.model_config_evaluators_dict)]
+            self._data_pool_evaluators = [get_subset(data,
+                                                     idx=pd.read_csv('%s/pool_init.csv' % self.save_dir)['id'],
+                                                     unique_data_idx=True) for data in self.data_full_evaluators]
         return self._data_pool_evaluators
 
     @property
     def data_val_evaluators(self):
         if not hasattr(self, '_data_val_evaluators'):
-            self._data_val_evaluators = [get_data(
-                data_format=model_config['data_format'],
-                path='%s/val.csv' % self.save_dir,
-                pure_columns=self.pure_columns,
-                mixture_columns=self.mixture_columns,
-                target_columns=self.target_columns,
-                feature_columns=self.feature_columns,
-                features_generator=self.features_generator_evaluators[i],
-                features_combination=model_config.get('features_combination'),
-                graph_kernel_type=model_config.get('graph_kernel_type'),
-                n_jobs=self.n_jobs) for i, model_config in enumerate(self.model_config_evaluators_dict)]
+            self._data_val_evaluators = [get_subset(data,
+                                                    idx=pd.read_csv('%s/val.csv' % self.save_dir)['id'],
+                                                    unique_data_idx=True) for data in self.data_full_evaluators]
         return self._data_val_evaluators
 
     @property

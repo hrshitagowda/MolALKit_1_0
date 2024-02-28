@@ -9,6 +9,15 @@ from sklearn.cluster import KMeans
 from sklearn.manifold import SpectralEmbedding
 
 
+def get_subset(dataset, idx, unique_data_idx: bool = False):
+    subset = copy.deepcopy(dataset)
+    if unique_data_idx:
+        subset.data = [data for data in dataset.data if data.id in idx]
+    else:
+        subset.data = [data for i, data in enumerate(dataset.data) if i in idx]
+    return subset
+
+
 def get_topn_idx(values: np.ndarray, n: int = 1, target: Union[Literal['max', 'min'], float] = 'max',
                  cutoff: float = None) -> List[int]:
     """ Get the indices of top n values.
@@ -41,12 +50,6 @@ def get_topn_idx(values: np.ndarray, n: int = 1, target: Union[Literal['max', 'm
     # Includes tiny random values to randomly sort duplicated values
     sorting_key = values + np.random.random(len(values)) * 1e-10
     return np.argsort(sorting_key)[-n:].tolist()
-
-
-def get_subset(dataset, idx):
-    subset = copy.deepcopy(dataset)
-    subset.data = [data for i, data in enumerate(dataset.data) if i in idx]
-    return subset
 
 
 class BaseSelectionMethod(ABC):
