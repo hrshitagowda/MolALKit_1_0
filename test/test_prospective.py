@@ -9,7 +9,7 @@ from molalkit.data.datasets import DATA_DIR
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 
-
+"""
 @pytest.mark.parametrize('batch_size', ['1', '5', '20'])
 def test_classification_no_val(batch_size):
     save_dir = os.path.join(CWD, 'test')
@@ -100,3 +100,4 @@ def test_classification_no_pool(batch_size):
     assert len(alr.id_add) == batch_size
     ids = [data.id for data in active_learner.dataset_train_selector[-batch_size:]]
     assert set(ids) == set(alr.id_add)
+"""

@@ -5,15 +5,16 @@ import os
 import json
 import pickle
 import shutil
+import copy
 import pandas as pd
 import numpy as np
 from logging import Logger
 from sklearn.metrics import *
 import scipy
+from functools import cached_property
 from ..args import Metric
-from .selection_method import BaseSelectionMethod, RandomSelectionMethod
+from .selection_method import BaseSelectionMethod, RandomSelectionMethod, get_subset
 from .forgetter import BaseForgetter, RandomForgetter, FirstForgetter
-from .selection_method import get_subset
 
 
 def eval_metric_func(y, y_pred, metric: str) -> float:
@@ -119,7 +120,7 @@ class ActiveLearner:
                  dataset_pool_evaluators=None, dataset_val_evaluators=None,
                  yoked_learning_only: bool = False,
                  stop_size: int = None, stop_cutoff: float = None, confidence_cutoff: float = None,
-                 n_query: int = None,
+                 n_query: int = None, n_pool: int = None,
                  evaluate_stride: int = None, output_details: bool = False, kernel: Callable = None,
                  save_cpt_stride: int = None, write_traj_stride: int = None,
                  seed: int = 0,
@@ -142,6 +143,14 @@ class ActiveLearner:
         self.stop_cutoff = stop_cutoff
         self.confidence_cutoff = confidence_cutoff
         self.n_query = n_query
+        self.pools_uid = [data.id for data in self.dataset_pool_selector] 
+        if n_pool is not None and n_pool > 1:
+            # splits the large pool set into small pool sets to accelerate learning process.
+            np.random.seed(seed)
+            shuffled_uid = np.random.permutation(self.pools_uid)
+            self.pools_uid = np.array_split(shuffled_uid, n_pool)
+        else:
+            self.pools_uid = [self.pools_uid]
         self.evaluate_stride = evaluate_stride
         self.output_details = output_details
         self.kernel = kernel  # used for cluster selection method
@@ -162,15 +171,44 @@ class ActiveLearner:
         return len(self.dataset_train_selector)
 
     @property
-    def pool_size(self) -> int:
-        return 0 if self.dataset_pool_selector is None else len(self.dataset_pool_selector)
+    def val_size(self) -> int:
+        return 0 if self.dataset_val_selector is None else len(self.dataset_val_selector)
+
+    @cached_property
+    def uid2data_selector(self) -> Dict:
+        d_train = {data.id: data for data in self.dataset_train_selector}
+        d_pool = {data.id: data for data in self.dataset_pool_selector}
+        return {**d_train, **d_pool}
+    
+    @cached_property
+    def uid2data_evaluators(self) -> List[Dict]:
+        dict_list = []
+        for i in range(len(self.dataset_train_evaluators)):
+            d_train = {data.id: data for data in self.dataset_train_evaluators[i]}
+            d_pool = {data.id: data for data in self.dataset_pool_evaluators[i]}
+            dict_list.append({**d_train, **d_pool})
+        return dict_list
 
     def termination(self) -> bool:
-        if self.pool_size == 0:
-            self.info('Terminating active learning: pool size = 0')
+        """ Termination condition for the entire active learning. """
+        if (self.stop_size is not None and self.train_size >= self.stop_size) or len(self.dataset_pool_selector) == 0:
             return True
-        elif self.stop_size is not None and self.train_size >= self.stop_size:
-            self.info(f'Terminating active learning: train_size > stop_size {self.stop_size}')
+        else:
+            return False
+
+    def termination_pool(self, dataset_pool) -> bool:
+        """ Termination condition for active learning for a specific pool set.
+
+        Parameters
+        ----------
+        dataset_pool: pool set to run active learning.
+
+        Returns
+        ----------
+        bool: True if the termination condition is satisfied else False.
+        """
+        if len(dataset_pool) == 0:
+            # self.info('Terminating active learning: pool size = 0')
             return True
         elif self.stop_cutoff is not None and len(self.active_learning_traj.results) > 0:
             acquisition = self.active_learning_traj.results[-1].acquisition_add
@@ -194,27 +232,45 @@ class ActiveLearner:
             return False
 
     def run(self, max_iter: int = None):
+        # active learning overview information
         info = f'Start active learning: \n' \
-               f'training set size = {self.train_size}\npool set size = {self.pool_size}\n' \
-               f'selection method: {self.selection_method.info}.'
+               f'Training set size = {self.train_size}\n' \
+               f'Pool set size = {len(self.dataset_pool_selector)}\n' \
+               f'Validation set size = {self.val_size}\n' \
+               f'selection method: {self.selection_method.info}\n'
         if self.forgetter is not None:
-            info += f'\nForgetter: {self.forgetter.info}.'
+            info += f'Forgetter: {self.forgetter.info}'
         self.info(info)
+        # start active learning
+        for pool_uid in self.pools_uid:
+            self.dataset_pool_selector_ = get_subset(self.dataset_pool_selector, idx=pool_uid, unique_data_idx=True)
+            terminated_tag, alr = self.run_active_learning(max_iter=max_iter)
+            if terminated_tag in [1, 3]:
+                break
+        if terminated_tag in [1, 2]:
+            # save the results of the last frame of AL
+            alr.id_add = alr.acquisition_add = alr.id_forget = alr.acquisition_forget = []
+            self.active_learning_traj.results.append(alr)
+        # write output files
+        self.write_traj()
+        if self.save_cpt_stride:
+            self.save(path=self.save_dir, overwrite=True)
+
+    def run_active_learning(self, max_iter: int) -> bool:
+        is_first_step = True
         self.model_fitted = False
         for n_iter in range(self.current_iter, max_iter):
             alr = ActiveLearningResult(n_iter)
-            alr.id_prior_al = self.get_id(self.dataset_train_selector)
+            alr.id_prior_al = [data.id for data in self.dataset_train_selector]
             self.info('Start an new iteration of active learning: %d.' % self.current_iter)
             # evaluate
             if self.evaluate_stride is not None and n_iter % self.evaluate_stride == 0:
                 self.evaluate(alr)
             # check termination condition
             if self.termination():
-                alr.id_add = alr.acquisition_add = alr.id_forget = alr.acquisition_forget = []
-                # save the results of the last frame of AL
-                if len(self.active_learning_traj.results) == 0 or alr.n_iter != self.active_learning_traj.results[-1].n_iter:
-                    self.active_learning_traj.results.append(alr)
-                break
+                return 1, alr
+            if not is_first_step and self.termination_pool(self.dataset_pool_selector_):
+                return 2, alr
             # add sample
             self.add_samples(alr)
             # forget sample
@@ -222,7 +278,7 @@ class ActiveLearner:
 
             self.current_iter += 1
             self.info('Training set size = %i' % self.train_size)
-            self.info('Pool set size = %i' % self.pool_size)
+            self.info('Pool set size = %i' % len(self.dataset_pool_selector_))
             self.active_learning_traj.results.append(alr)
             if self.write_traj_stride is not None and n_iter % self.write_traj_stride == 0:
                 self.write_traj()
@@ -231,15 +287,14 @@ class ActiveLearner:
                 self.save(path=self.save_dir, filename='al_temp.pkl', overwrite=True)
                 shutil.move(os.path.join(self.save_dir, 'al_temp.pkl'), os.path.join(self.save_dir, 'al.pkl'))
                 self.info('save checkpoint file %s/al.pkl' % self.save_dir)
-        self.write_traj()
-        if self.save_cpt_stride:
-            self.save(path=self.save_dir, overwrite=True)
-
+            is_first_step = False
+        return 3, alr
+    """
     def run_prospective(self):
         self.model_fitted = False
         n_iter = self.current_iter
         alr = ActiveLearningResult(n_iter)
-        alr.id_prior_al = self.get_id(self.dataset_train_selector)
+        alr.id_prior_al = [data.id for data in self.dataset_train_selector]
         if self.termination():
             return None
         # add sample
@@ -249,7 +304,7 @@ class ActiveLearner:
         self.current_iter += 1
         self.active_learning_traj.results.append(alr)
         return alr
-
+    """
     def evaluate(self, alr: ActiveLearningResult):
         self.info('evaluating model performance.')
         # conventional active learning.
@@ -288,20 +343,18 @@ class ActiveLearner:
             self.model_selector.fit_alb(self.dataset_train_selector)
         selected_idx, acquisition, remain_idx = self.selection_method(model=self.model_selector,
                                                                       data_train=self.dataset_train_selector,
-                                                                      data_pool=self.dataset_pool_selector,
+                                                                      data_pool=self.dataset_pool_selector_,
                                                                       kernel=self.kernel,
                                                                       stop_cutoff=self.stop_cutoff,
                                                                       confidence_cutoff=self.confidence_cutoff)
-        alr.id_add = [self.dataset_pool_selector.data[i].id for i in selected_idx]
+        alr.id_add = [self.dataset_pool_selector_.data[i].id for i in selected_idx]
         alr.acquisition_add = acquisition
         # transfer data from pool to train.
-        for i in selected_idx:
-            self.dataset_train_selector.data.append(self.dataset_pool_selector.data[i])
+        for uid in alr.id_add:
+            self.dataset_train_selector.data.append(self.uid2data_selector[uid])
             for j in range(len(self.model_evaluators)):
-                self.dataset_train_evaluators[j].data.append(self.dataset_pool_evaluators[j].data[i])
-        self.dataset_pool_selector = get_subset(self.dataset_pool_selector, remain_idx)
-        for j in range(len(self.model_evaluators)):
-            self.dataset_pool_evaluators[j] = get_subset(self.dataset_pool_evaluators[j], remain_idx)
+                self.dataset_train_evaluators[j].data.append(self.uid2data_evaluators[j][uid])
+        self.dataset_pool_selector_ = get_subset(self.dataset_pool_selector_, remain_idx)
         # set the model unfitted because new data is added.
         self.model_fitted = False
 
@@ -325,9 +378,7 @@ class ActiveLearner:
             alr.acquisition_forget = acquisition
             # transfer data from train to pool.
             for i in sorted(forget_idx, reverse=True):
-                self.dataset_pool_selector.data.append(self.dataset_train_selector.data.pop(i))
-                for j in range(len(self.model_evaluators)):
-                    self.dataset_pool_evaluators[j].data.append(self.dataset_train_evaluators[j].data.pop(i))
+                self.dataset_pool_selector_.data.append(self.dataset_train_selector.data.pop(i))
         else:
             alr.id_forget = []
             alr.acquisition_forget = []
@@ -335,13 +386,6 @@ class ActiveLearner:
     def write_traj(self):
         df_traj = pd.DataFrame(self.active_learning_traj.get_results())
         df_traj.to_csv(os.path.join(self.save_dir, 'al_traj.csv'), index=False)
-
-    @staticmethod
-    def get_id(dataset):
-        id_list = []
-        for data in dataset:
-            id_list.append(data.id)
-        return id_list
 
     @staticmethod
     def get_top_k_score(dataset, top_k_id) -> float:

@@ -35,6 +35,7 @@ def run(args: ActiveLearningArgs):
                                        stop_size=args.stop_size,
                                        stop_cutoff=args.stop_cutoff,
                                        confidence_cutoff=args.confidence_cutoff,
+                                       n_query=args.n_query, n_pool=args.n_pool,
                                        evaluate_stride=args.evaluate_stride,
                                        write_traj_stride=args.write_traj_stride,
                                        output_details=args.output_details,

@@ -230,7 +230,7 @@ class DatasetArgs(CommonArgs):
                     seed=self.seed,
                     logger=self.logger)
                 df[df.index.isin(val_index)].to_csv('%s/val.csv' % self.save_dir, index=False)
-                df_al = df[df.index.isin(al_index)]
+                df_al = df[df.index.isin(al_index)].copy()
                 if self.error_rate is not None:
                     # randomly select a portion of the training set to be affected by error
                     error_index = np.random.choice(al_index, int(self.error_rate * len(al_index)), replace=False)
@@ -339,6 +339,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     n_query: int = None
     """number of samples to query in each active learning iteration. (default=None means query all samples in the 
     pool set)"""
+    n_pool: int = None
+    """number of pool sets to be split for active learning iteration."""
     stop_ratio: float = None
     """Stop active learning when the selected molecules reach the ratio."""
     stop_size: int = None
@@ -463,24 +465,35 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     @property
     def data_train_selector(self):
         if not hasattr(self, '_data_train_selector'):
+            df = pd.read_csv('%s/train_init.csv' % self.save_dir)
             self._data_train_selector = get_subset(self.data_full_selector, 
-                                                   idx=pd.read_csv('%s/train_init.csv' % self.save_dir)['id'],
+                                                   idx=df['id'].tolist(),
                                                    unique_data_idx=True)
+            if self.error_rate is not None:
+                for i, data in enumerate(self._data_train_selector.data):
+                    data.targets = df[self.target_columns].to_numpy()[i:i+1]
         return self._data_train_selector
 
     @property
     def data_pool_selector(self):
         if not hasattr(self, '_data_pool_selector'):
+            df = pd.read_csv('%s/pool_init.csv' % self.save_dir)
             self._data_pool_selector = get_subset(self.data_full_selector,
-                                                  idx=pd.read_csv('%s/pool_init.csv' % self.save_dir)['id'],
+                                                  idx=df['id'].tolist(),
                                                   unique_data_idx=True)
+            if self.error_rate is not None:
+                for i, data in enumerate(self._data_pool_selector.data):
+                    data.targets = df[self.target_columns].to_numpy()[i:i+1]
         return self._data_pool_selector
 
     @property
     def data_val_selector(self):
         if not hasattr(self, '_data_val_selector'):
+            df = pd.read_csv('%s/val.csv' % self.save_dir)
+            if len(df) == 0:
+                return None
             self._data_val_selector = get_subset(self.data_full_selector,
-                                                 idx=pd.read_csv('%s/val.csv' % self.save_dir)['id'],
+                                                 idx=df['id'].tolist(),
                                                  unique_data_idx=True)
         return self._data_val_selector
 
@@ -488,7 +501,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     def data_train_evaluators(self):
         if not hasattr(self, '_data_train_evaluators'):
             self._data_train_evaluators = [get_subset(data,
-                                                      idx=pd.read_csv('%s/train_init.csv' % self.save_dir)['id'],
+                                                      idx=pd.read_csv('%s/train_init.csv' % self.save_dir)['id'].tolist(),
                                                       unique_data_idx=True) for data in self.data_full_evaluators]
         return self._data_train_evaluators
 
@@ -496,7 +509,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     def data_pool_evaluators(self):
         if not hasattr(self, '_data_pool_evaluators'):
             self._data_pool_evaluators = [get_subset(data,
-                                                     idx=pd.read_csv('%s/pool_init.csv' % self.save_dir)['id'],
+                                                     idx=pd.read_csv('%s/pool_init.csv' % self.save_dir)['id'].tolist(),
                                                      unique_data_idx=True) for data in self.data_full_evaluators]
         return self._data_pool_evaluators
 
@@ -504,7 +517,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
     def data_val_evaluators(self):
         if not hasattr(self, '_data_val_evaluators'):
             self._data_val_evaluators = [get_subset(data,
-                                                    idx=pd.read_csv('%s/val.csv' % self.save_dir)['id'],
+                                                    idx=pd.read_csv('%s/val.csv' % self.save_dir)['id'].tolist(),
                                                     unique_data_idx=True) for data in self.data_full_evaluators]
         return self._data_val_evaluators
 
@@ -600,7 +613,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 self.exploitive_target = float(self.exploitive_target)
             if self.learning_type == 'passive':
                 if self.batch_mode == 'cluster':
-                    self._selection_method = ClusterRandomSelectionMethod(cluster_size=self.cluster_size,
+                    self._selection_method = ClusterRandomSelectionMethod(batch_size=self.batch_size,
+                                                                          cluster_size=self.cluster_size,
                                                                           seed=self.seed)
                 else:
                     self._selection_method = RandomSelectionMethod(seed=self.seed)
@@ -608,11 +622,13 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 if self.batch_mode == 'cluster':
                     if self.n_query is not None:
                         self._selection_method = ClusterExplorativeParitialQuerySelectionMethod(
+                            batch_size=self.batch_size,
                             cluster_size=self.cluster_size,
                             n_query=self.n_query,
                             seed=self.seed)
                     else:
-                        self._selection_method = ClusterExplorativeSelectionMethod(cluster_size=self.cluster_size,
+                        self._selection_method = ClusterExplorativeSelectionMethod(batch_size=self.batch_size,
+                                                                                   cluster_size=self.cluster_size,
                                                                                    seed=self.seed)
                 else:
                     if self.n_query is not None:
@@ -622,7 +638,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                         self._selection_method = ExplorativeSelectionMethod(seed=self.seed)
             elif self.learning_type == 'exploitive':
                 if self.batch_mode == 'cluster':
-                    self._selection_method = ClusterExploitiveSelectionMethod(cluster_size=self.cluster_size,
+                    self._selection_method = ClusterExploitiveSelectionMethod(batch_size=self.batch_size,
+                                                                              cluster_size=self.cluster_size,
                                                                               target=self.exploitive_target,
                                                                               seed=self.seed)
                 else:
@@ -689,7 +706,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 self.data_train_selector.unify_datatype(self.data_pool_selector.X_graph)
             if self.data_val_selector is not None and len(self.data_val_selector) != 0:
                 self.data_train_selector.unify_datatype(self.data_val_selector.X_graph)
-        for i, model_config_evaluator_dict in self.model_config_evaluators_dict:
+        for i, model_config_evaluator_dict in enumerate(self.model_config_evaluators_dict):
             if model_config_evaluator_dict.get('graph_kernel_type') == 'graph':
                 if self.data_pool_evaluators[i] is not None and len(self.data_pool_evaluators[i]) != 0:
                     self.data_train_evaluators[i].unify_datatype(self.data_pool_evaluators[i].X_graph)
@@ -740,7 +757,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
             unique_id.append(data.id)
         if self.data_pool_selector is not None:
             for data in self.data_pool_selector.data:
-                assert data.id not in unique_id
+                assert data.id not in unique_id, f'{data.id}, {unique_id}'
                 unique_id.append(data.id)
         if self.data_val_selector is not None:
             for data in self.data_val_selector:
