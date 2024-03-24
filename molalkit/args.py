@@ -200,7 +200,7 @@ class DatasetArgs(CommonArgs):
             self.pure_columns = ['SMILES']
             self.target_columns = ['LOG PLASMA PROTEIN BINDING (RAT) (% unbound)']
 
-        if self.split_type == 'scaffold':
+        if self.split_type is not None and self.split_type.startswith('scaffold'):
             assert len(self.pure_columns) == 1
             assert self.mixture_columns is None
 
@@ -394,7 +394,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 dropout=self.model_config_selector_dict.get('dropout') or 0.0,
                 batch_size=self.model_config_selector_dict.get('batch_size') or 50,
                 ensemble_size=self.model_config_selector_dict.get('ensemble_size') or 1,
-                number_of_molecules=self.model_config_selector_dict.get('number_of_molecules') or 1,
+                number_of_molecules=self.model_config_selector_dict.get('number_of_molecules') or len(self.pure_columns),
                 mpn_shared=self.model_config_selector_dict.get('mpn_shared') or False,
                 atom_messages=self.model_config_selector_dict.get('atom_messages') or False,
                 undirected=self.model_config_selector_dict.get('undirected') or False,
@@ -440,7 +440,7 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 dropout=model_config.get('dropout') or 0.0,
                 batch_size=model_config.get('batch_size') or 50,
                 ensemble_size=model_config.get('ensemble_size') or 1,
-                number_of_molecules=model_config.get('number_of_molecules') or 1,
+                number_of_molecules=model_config.get('number_of_molecules') or len(self.pure_columns),
                 mpn_shared=model_config.get('mpn_shared') or False,
                 atom_messages=model_config.get('atom_messages') or False,
                 undirected=model_config.get('undirected') or False,
@@ -864,7 +864,7 @@ class ReEvaluateArgs(CommonArgs):
                 dropout=self.model_config_evaluator_dict.get('dropout') or 0.0,
                 batch_size=self.model_config_evaluator_dict.get('batch_size') or 50,
                 ensemble_size=self.model_config_evaluator_dict.get('ensemble_size') or 1,
-                number_of_molecules=self.model_config_evaluator_dict.get('number_of_molecules') or 1,
+                number_of_molecules=self.model_config_evaluator_dict.get('number_of_molecules') or len(self.pure_columns),
                 mpn_shared=self.model_config_evaluator_dict.get('mpn_shared') or False,
                 atom_messages=self.model_config_evaluator_dict.get('atom_messages') or False,
                 undirected=self.model_config_evaluator_dict.get('undirected') or False,

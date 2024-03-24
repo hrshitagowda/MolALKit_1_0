@@ -8,6 +8,7 @@ import pandas as pd
 from sklearn.gaussian_process.kernels import RBF, DotProduct
 from mgktools.kernels.utils import get_kernel_config
 from mgktools.data.data import Dataset
+from mgktools.kernels.PreComputed import calc_precomputed_kernel_config
 
 
 class EmptyLogger:
@@ -231,7 +232,7 @@ def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
         if features_kernel_type is None:
             return None
         elif features_kernel_type == 'linear':
-            return 'linear'
+            raise NotImplementedError
         elif features_kernel_type == 'dot_product':
             if features_hyperparameters.__class__ == list:
                 assert len(features_hyperparameters) == 1
@@ -277,19 +278,9 @@ def get_kernel(graph_kernel_type: Literal['graph', 'pre-computed'] = None,
                     features_hyperparameters_bounds="fixed",
                     features_hyperparameters_file=features_hyperparameters_file
                 )
-                kernel_dict = kernel_config.get_kernel_dict(
-                    dataset.X, dataset.X_repr.ravel())
+                kernel_config = calc_precomputed_kernel_config(kernel_config=kernel_config, dataset=dataset)
                 dataset.graph_kernel_type = 'pre-computed'
-                pickle.dump(kernel_dict, open(
-                    kernel_pkl_path, 'wb'), protocol=4)
-                return get_kernel_config(
-                    dataset=dataset,
-                    graph_kernel_type='pre-computed',
-                    features_kernel_type=features_kernel_type,
-                    features_hyperparameters=features_hyperparameters,
-                    features_hyperparameters_bounds="fixed",
-                    features_hyperparameters_file=features_hyperparameters_file,
-                    kernel_dict=kernel_dict
-                ).kernel
+                pickle.dump(kernel_config, open(kernel_pkl_path, "wb"), protocol=4)
+                return kernel_config.kernel
         else:
             raise ValueError
