@@ -3,8 +3,7 @@
 import pytest
 import os
 import pandas as pd
-from molalkit.args import ActiveLearningArgs
-from model.test_model import run, al_results_check
+from model.test_model import molalkit_run, al_results_check
 
 
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -27,8 +26,7 @@ def test_classification(error_rate):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
     df1 = pd.read_csv('%s/train_init.csv' % save_dir)

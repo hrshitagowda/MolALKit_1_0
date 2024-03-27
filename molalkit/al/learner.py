@@ -12,6 +12,7 @@ from logging import Logger
 from sklearn.metrics import *
 import scipy
 from functools import cached_property
+from molalkit.models.mpnn.mpnn import MPNN, TrainArgs
 from ..args import Metric
 from .selection_method import BaseSelectionMethod, RandomSelectionMethod, get_subset
 from .forgetter import BaseForgetter, RandomForgetter, FirstForgetter
@@ -242,9 +243,16 @@ class ActiveLearner:
             info += f'Forgetter: {self.forgetter.info}'
         self.info(info)
         # start active learning
-        for pool_uid in self.pools_uid:
-            self.dataset_pool_selector_ = get_subset(self.dataset_pool_selector, idx=pool_uid, unique_data_idx=True)
+        if not hasattr(self, "current_pool_idx"):
+            self.current_pool_idx = 0
+        for i, pool_uid in enumerate(self.pools_uid):
+            if i < self.current_pool_idx:
+                continue
+            if not hasattr(self, "dataset_pool_selector_"):
+                self.dataset_pool_selector_ = get_subset(self.dataset_pool_selector, idx=pool_uid, unique_data_idx=True)
             terminated_tag, alr = self.run_active_learning(max_iter=max_iter)
+            del self.dataset_pool_selector_
+            self.current_pool_idx += 1
             if terminated_tag in [1, 3]:
                 break
         if terminated_tag in [1, 2]:
@@ -403,12 +411,23 @@ class ActiveLearner:
                 '`overwrite=True`.'
             )
         store = self.__dict__.copy()
+        # TrainArgs is unpicklable, transform into dict.
+        for model in ([store['model_selector']] + store['model_evaluators']):
+            if isinstance(model, MPNN):
+                model.args = model.args.as_dict()
         pickle.dump(store, open(f_al, 'wb'), protocol=4)
+        # transform back to TrainArgs
+        for model in ([store['model_selector']] + store['model_evaluators']):
+            if isinstance(model, MPNN):
+                model.args = TrainArgs().from_dict(model.args, skip_unsettable=True)
 
     @classmethod
     def load(cls, path, filename='al.pkl'):
         f_al = os.path.join(path, filename)
         store = pickle.load(open(f_al, 'rb'))
+        for model in ([store['model_selector']] + store['model_evaluators']):
+            if isinstance(model, MPNN):
+                model.args = TrainArgs().from_dict(model.args, skip_unsettable=True)
         input = {}
         for key in ['save_dir', 'selection_method', 'forgetter', 'model_selector',
                     'dataset_train_selector', 'dataset_pool_selector', 'dataset_val_selector', 'metrics']:

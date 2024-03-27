@@ -31,6 +31,7 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'molalkit_run=molalkit.al.run:molalkit_run',
+            'molalkit_run_from_cpt=molalkit.al.run:molalkit_run_from_cpt',
         ]
     },
     author='Yan Xiang',

@@ -6,11 +6,9 @@ from molalkit.args import ActiveLearningArgs, ActiveLearningContinueArgs, ReEval
 from molalkit.al.learner import ActiveLearner
 
 
-def molalkit_run():
-    run(args=ActiveLearningArgs().parse_args())
-
-
-def run(args: ActiveLearningArgs):
+def molalkit_run(arguments=None):
+    # read args.
+    args = ActiveLearningArgs().parse_args(arguments)
     # active learning
     args.logger.info('Start a new active learning run.')
     start = time.time()
@@ -49,26 +47,23 @@ def run(args: ActiveLearningArgs):
     return active_learner
 
 
-def run_from_cpt():
+def molalkit_run_from_cpt(arguments=None):
     # read args.
-    args = ActiveLearningContinueArgs().parse_args()
+    args = ActiveLearningContinueArgs().parse_args(arguments)
     # active learning
     args.logger.info('Start a new active learning run.')
     start = time.time()
     args.logger.info('continue active learning using checkpoint file %s/al.pkl' % args.save_dir)
     active_learner = ActiveLearner.load(path=args.save_dir)
+    assert len(active_learner.pools_uid) == 1
+    active_learner.current_pool_idx = 0
     # change stop_size.
-    if args.stop_ratio is not None:
-        if args.stop_size is None:
-            args.stop_size = int(args.stop_ratio * (active_learner.train_size + active_learner.pool_size))
-        else:
-            args.stop_size = min(args.stop_size,
-                                 int(args.stop_ratio * (active_learner.train_size + active_learner.pool_size)))
-        assert args.stop_size >= 2
     active_learner.stop_size = args.stop_size
-    active_learner.run()
+    active_learner.stop_cutoff = args.stop_cutoff
+    active_learner.run(max_iter=args.max_iter)
     end = time.time()
     args.logger.info('total time: %d s' % (end - start))
+    return active_learner
 
 
 def run_eval():

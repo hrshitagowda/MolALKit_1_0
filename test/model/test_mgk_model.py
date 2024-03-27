@@ -4,7 +4,7 @@ import pytest
 import os
 from molalkit.args import ActiveLearningArgs
 from molalkit.models.configs import AVAILABLE_MODELS
-from molalkit.al.run import run
+from molalkit.al.run import molalkit_run
 from test_model import al_results_check
 
 
@@ -24,6 +24,7 @@ for model in AVAILABLE_MODELS:
 @pytest.mark.parametrize('model', MGK_CLASSIFICATION_MODELS)
 def test_classification(model):
     save_dir = os.path.join(CWD, '..', 'test')
+    assert not os.path.exists('%s/kernel_selector.pkl' % save_dir)
     arguments = [
         '--data_public', 'carcinogens_lagunin',
         '--metrics', 'roc-auc',
@@ -37,15 +38,18 @@ def test_classification(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
+    if model != 'GPR-MGK-RDKit_Config':
+        assert os.path.exists('%s/kernel_selector.pkl' % save_dir)
+        os.unlink('%s/kernel_selector.pkl' % save_dir)
 
 
 @pytest.mark.parametrize('model', MGK_CLASSIFICATION_MODELS)
 def test_classification_cv(model):
     save_dir = os.path.join(CWD, '..', 'test')
+    assert not os.path.exists('%s/kernel_selector.pkl' % save_dir)
     arguments = [
         '--data_public', 'carcinogens_lagunin',
         '--metrics', 'roc-auc',
@@ -60,15 +64,18 @@ def test_classification_cv(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 1
     al_results_check(save_dir)
+    if model != 'GPR-MGK-RDKit_Config':
+        assert os.path.exists('%s/kernel_selector.pkl' % save_dir)
+        os.unlink('%s/kernel_selector.pkl' % save_dir)
 
 
 @pytest.mark.parametrize('model', MGK_REGRESSION_MODELS)
 def test_regression(model):
     save_dir = os.path.join(CWD, '..', 'test')
+    assert not os.path.exists('%s/kernel_selector.pkl' % save_dir)
     arguments = [
         '--data_public', 'test_regression',
         '--metrics', 'rmse',
@@ -82,15 +89,18 @@ def test_regression(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
+    if model != 'GPR-MGK-RDKit_Config':
+        assert os.path.exists('%s/kernel_selector.pkl' % save_dir)
+        os.unlink('%s/kernel_selector.pkl' % save_dir)
 
 
 @pytest.mark.parametrize('model', MGK_REGRESSION_MODELS)
 def test_regression_cv(model):
     save_dir = os.path.join(CWD, '..', 'test')
+    assert not os.path.exists('%s/kernel_selector.pkl' % save_dir)
     arguments = [
         '--data_public', 'test_regression',
         '--metrics', 'rmse',
@@ -105,7 +115,9 @@ def test_regression_cv(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 1
     al_results_check(save_dir)
+    if model != 'GPR-MGK-RDKit_Config':
+        assert os.path.exists('%s/kernel_selector.pkl' % save_dir)
+        os.unlink('%s/kernel_selector.pkl' % save_dir)

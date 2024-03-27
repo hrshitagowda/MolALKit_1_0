@@ -793,6 +793,23 @@ class ActiveLearningContinueArgs(CommonArgs):
     """the ratio of molecules to stop the active learning."""
     stop_size: int = None
     """the number of molecules to stop the active learning."""
+    stop_cutoff: float = None
+    """Stop active learning when the acquisition function reach the cutoff."""
+    max_iter: int = 10000
+    """the maximum number of iterations."""
+
+    def process_args(self) -> None:
+        super().process_args()
+        # get stop_size from stop_ratio
+        if self.stop_ratio is not None:
+            if self.stop_size is None:
+                self.stop_size = math.ceil(
+                    self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector)))
+            else:
+                self.stop_size = min(
+                    self.stop_size,
+                    math.ceil(self.stop_ratio * (len(self.data_train_selector) + len(self.data_pool_selector))))
+            assert self.stop_size >= 2
 
 
 class ReEvaluateArgs(CommonArgs):

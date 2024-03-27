@@ -1,21 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
-import time
-from typing import Dict, Iterator, List, Optional, Union, Literal, Tuple
+from typing import List, Literal
 from tqdm import trange
 from logging import Logger
 import numpy as np
 import torch
-from tensorboardX import SummaryWriter
 from torch.optim.lr_scheduler import ExponentialLR
-from chemprop.data import get_class_sizes, get_data, MoleculeDataLoader, MoleculeDataset, set_cache_graph, split_data, \
-    get_task_names
-from chemprop.utils import build_optimizer, build_lr_scheduler, load_checkpoint, makedirs, \
-    save_checkpoint, save_smiles_splits, load_frzn_model, multitask_mean, load_mpn_model
+from chemprop.data import get_class_sizes, MoleculeDataLoader, get_task_names
+from chemprop.utils import build_optimizer, build_lr_scheduler, makedirs, load_mpn_model
 from chemprop.nn_utils import param_count, param_count_all
 from chemprop.models import MoleculeModel
-from chemprop.constants import MODEL_FILE_NAME
 from chemprop.train.loss_functions import get_loss_func
 from chemprop.train import train
 from chemprop.train.predict import predict

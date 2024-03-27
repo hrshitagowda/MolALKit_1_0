@@ -6,7 +6,7 @@ import json
 import pandas as pd
 from molalkit.args import ActiveLearningArgs
 from molalkit.models.configs import AVAILABLE_MODELS
-from molalkit.al.run import run
+from molalkit.al.run import molalkit_run
 
 
 def al_results_check(save_dir):
@@ -54,8 +54,7 @@ def test_classification(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
@@ -77,8 +76,7 @@ def test_classification_cv(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 1
     al_results_check(save_dir)
 
@@ -99,8 +97,7 @@ def test_regression(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
 
@@ -123,7 +120,6 @@ def test_regression_cv(model):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 1
     al_results_check(save_dir)

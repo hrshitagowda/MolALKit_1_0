@@ -4,7 +4,7 @@ import pytest
 import os
 import sys
 from molalkit.args import ActiveLearningArgs
-from molalkit.al.run import run
+from molalkit.al.run import molalkit_run
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(CWD, '..'))
@@ -33,8 +33,7 @@ def test_classification_rf(forget_protocol, forget_para_set):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 139
     al_results_check(save_dir)
 
@@ -61,8 +60,7 @@ def test_classification_rf_oob_error(forget_protocol, forget_para_set):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 139
     al_results_check(save_dir)
 
@@ -91,7 +89,6 @@ def test_classification_gpr(model, forget_protocol, forget_para_set):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 139
     al_results_check(save_dir)

@@ -3,7 +3,7 @@
 import pytest
 import os
 from molalkit.args import ActiveLearningArgs
-from model.test_model import run, al_results_check
+from model.test_model import molalkit_run, al_results_check
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 
@@ -33,8 +33,7 @@ def test_classification(params_set):
     ]
     if n_query is not None:
         arguments.extend(['--n_query', n_query])
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 29
     al_results_check(save_dir)
 
@@ -68,8 +67,7 @@ def test_regression1(params_set):
     ]
     if exploitive_target is not None:
         arguments.extend(['--exploitive_target', exploitive_target, '--top_k', '0.1'])
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 22
     al_results_check(save_dir)
 
@@ -93,7 +91,6 @@ def test_regression_exploitive(learning_type, exploitive_target):
         '--save_dir', save_dir,
         '--n_jobs', '4'
     ]
-    args = ActiveLearningArgs().parse_args(arguments)
-    active_learner = run(args)
+    active_learner = molalkit_run(arguments)
     assert len(active_learner.active_learning_traj.results) == 4
     al_results_check(save_dir)
