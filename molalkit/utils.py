@@ -74,7 +74,7 @@ def get_data(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
 
 def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               dataset_type: Literal['regression', 'classification', 'multiclass'],
-              model: Literal['random_forest', 'naive_bayes', 'gaussian_process', 'support_vector_machine'],
+              model: Literal['random_forest', 'naive_bayes', 'logistic_regression', 'gaussian_process', 'support_vector_machine', 'adaboost', 'xgboost'],
               save_dir: str = None,
               data_path: str = None,
               smiles_columns: List[str] = None,
@@ -110,6 +110,10 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
               uncertainty_type: Literal['value', 'uncertainty'] = None,
               alpha: Union[float, str] = 1e-8,
               C: float = 1.0,
+              booster: Literal['gbtree', 'gblinear', 'dart'] = 'gbtree',
+              n_estimators: int = 100,
+              max_depth: int = None,
+              learning_rate: float = 0.1,
               n_jobs: int = 8,
               seed: int = 0,
               logger: Logger = None):
@@ -120,10 +124,10 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
         if model == 'random_forest':
             if dataset_type == 'regression':
                 from molalkit.models.random_forest.RandomForestRegressor import RFRegressor
-                return RFRegressor(random_state=seed)
+                return RFRegressor(n_estimators=n_estimators, max_depth=max_depth, n_jobs=n_jobs, random_state=seed)
             else:
                 from molalkit.models.random_forest.RandomForestClassifier import RFClassifier
-                return RFClassifier(random_state=seed, oob_score=True)
+                return RFClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=n_jobs, random_state=seed, oob_score=True)
         elif model == 'naive_bayes':
             assert dataset_type == 'classification'
             from molalkit.models.naive_bayes.NaiveBayesClassifier import NBClassifier
@@ -155,10 +159,10 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
         elif model == 'xgboost':
             if dataset_type == 'regression':
                 from molalkit.models.xgboost.XGBRegressor import XGBRegressor
-                return XGBRegressor(random_state=seed)
+                return XGBRegressor(booster=booster, n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate, n_jobs=n_jobs, random_state=seed)
             else:
                 from molalkit.models.xgboost.XGBClassifier import XGBClassifier
-                return XGBClassifier(random_state=seed)
+                return XGBClassifier(booster=booster, n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate, n_jobs=n_jobs, random_state=seed)
         else:
             raise ValueError(f'unknown model: {model}')
     elif data_format == 'chemprop':

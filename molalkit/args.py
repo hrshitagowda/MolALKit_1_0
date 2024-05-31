@@ -410,6 +410,10 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 uncertainty_type=self.model_config_selector_dict.get('uncertainty_type'),
                 alpha=self.model_config_selector_dict.get('alpha'),
                 C=self.model_config_selector_dict.get('C'),
+                booster=self.model_config_selector_dict.get('booster'),
+                n_estimators=self.model_config_selector_dict.get('n_estimators') or 100,
+                max_depth=self.model_config_selector_dict.get('max_depth'),
+                learning_rate=self.model_config_selector_dict.get('learning_rate') or 0.1,
                 n_jobs=self.n_jobs,
                 seed=self.seed,
                 logger=self.logger)
@@ -456,6 +460,10 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
                 uncertainty_type=model_config.get('uncertainty_type'),
                 alpha=model_config.get('alpha'),
                 C=self.model_config_selector_dict.get('C'),
+                booster=self.model_config_selector_dict.get('booster'),
+                n_estimators=self.model_config_selector_dict.get('n_estimators') or 100,
+                max_depth=self.model_config_selector_dict.get('max_depth'),
+                learning_rate=self.model_config_selector_dict.get('learning_rate') or 0.1,
                 n_jobs=self.n_jobs,
                 seed=self.seed,
                 logger=self.logger
