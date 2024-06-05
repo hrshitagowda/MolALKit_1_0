@@ -735,8 +735,8 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
             self.max_iter = 1 if self.data_pool_selector is None else 1 + len(self.data_pool_selector)
         # check the input for exploitive active learning
         if self.learning_type == 'exploitive':
-            assert self.dataset_type == 'regression', 'exploitive active learning only support regression task.'
-            assert self.top_k is not None, 'top_k must be set for exploitive active learning.'
+            # assert self.dataset_type == 'regression', 'exploitive active learning only support regression task.'
+            # assert self.top_k is not None, 'top_k must be set for exploitive active learning.'
             assert self.exploitive_target is not None, 'exploitive_target must be set for exploitive active learning.'
         # check the input for forgetting active learning
         if self.forget_protocol is not None:
