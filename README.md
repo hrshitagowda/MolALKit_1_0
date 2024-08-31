@@ -67,5 +67,5 @@ molalkit_run --data_public bace --metrics roc-auc mcc accuracy precision recall 
 ```
 
 ## Usage
-More examples can be found at [examples](https://github.com/RekerLab/MolAlKit/tree/main/examples).
-[Google Colab notebook](https://colab.research.google.com/drive/11thNx7RkGbGMe_TgieWCEShYy-h32Khv?usp=sharing).
+- [Google Colab notebook](https://colab.research.google.com/drive/11thNx7RkGbGMe_TgieWCEShYy-h32Khv?usp=sharing).
+- [Examples](https://github.com/RekerLab/MolAlKit/tree/main/examples).
