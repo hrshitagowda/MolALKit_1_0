@@ -128,14 +128,30 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
             else:
                 from molalkit.models.random_forest.RandomForestClassifier import RFClassifier
                 return RFClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=n_jobs, random_state=seed, oob_score=True)
-        elif model == 'naive_bayes':
+        elif model == 'MultinomialNB':
             assert dataset_type == 'classification'
-            from molalkit.models.naive_bayes.NaiveBayesClassifier import NBClassifier
-            return NBClassifier()
+            from molalkit.models.naive_bayes.NaiveBayesClassifier import MultinomialNBClassifier
+            return MultinomialNBClassifier()
+        elif model == 'BernoulliNB':
+            assert dataset_type == 'classification'
+            from molalkit.models.naive_bayes.NaiveBayesClassifier import BernoulliNBClassifier
+            return BernoulliNBClassifier()
+        elif model == 'GaussianNB':
+            assert dataset_type == 'classification'
+            from molalkit.models.naive_bayes.NaiveBayesClassifier import GaussianNBClassifier
+            return GaussianNBClassifier()
         elif model == 'logistic_regression':
             assert dataset_type == 'classification'
             from molalkit.models.logistic_regression.LogisticRegression import LogisticRegressor
             return LogisticRegressor(random_state=seed)
+        elif model == 'decision_tree':
+            assert dataset_type == 'classification'
+            from molalkit.models.dt.dt import DecisionTreeClassifier
+            return DecisionTreeClassifier(max_depth=max_depth, random_state=seed)
+        elif model == 'extra_trees':
+            assert dataset_type == 'classification'
+            from molalkit.models.extra_trees.extra_trees import ExtraTreesClassifier
+            return ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=n_jobs, random_state=seed)
         elif model == 'gaussian_process_regression':
             assert dataset_type in ['regression', 'classification']
             assert uncertainty_type is not None

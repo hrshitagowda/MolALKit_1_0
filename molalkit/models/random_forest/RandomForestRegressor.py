@@ -7,8 +7,8 @@ from molalkit.models.base import BaseSklearnModel
 
 
 class RFRegressor(RandomForestRegressor, BaseSklearnModel):
-    def fit_alb(self, train_data):
-        return self.fit_alb_(train_data, self)
+    def fit_molalkit(self, train_data):
+        return self.fit_molalkit_(train_data, self)
 
     def predict_uncertainty(self, pred_data):
         X = pred_data.X

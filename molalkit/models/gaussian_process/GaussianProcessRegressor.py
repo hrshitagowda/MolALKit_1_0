@@ -11,7 +11,7 @@ class GPRegressor(GPR, BaseModel):
         super().__init__(*args, **kwargs)
         self.uncertainty_type = uncertainty_type
 
-    def fit_alb(self, train_data, **kwargs):
+    def fit_molalkit(self, train_data, **kwargs):
         X = train_data.X
         y = train_data.y
         super().fit(X, y, **kwargs)

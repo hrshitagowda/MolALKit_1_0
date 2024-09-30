@@ -1,11 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import numpy as np
-from sklearn.linear_model import LogisticRegression
-from molalkit.models.base import BaseSklearnModel
+from sklearn.tree import DecisionTreeClassifier as DTC
+from molalkit.models.base import BaseModel
 
 
-class LogisticRegressor(LogisticRegression, BaseSklearnModel):
+class DecisionTreeClassifier(DTC, BaseModel):
     def fit_molalkit(self, train_data):
         return self.fit_molalkit_(train_data, self)
 
