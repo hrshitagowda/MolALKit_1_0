@@ -1,8 +1,8 @@
 from sklearn.tree import DecisionTreeClassifier as DTC
-from molalkit.models.base import BaseModel
+from molalkit.models.base import BaseSklearnModel
 
 
-class DecisionTreeClassifier(DTC, BaseModel):
+class DecisionTreeClassifier(DTC, BaseSklearnModel):
     def fit_molalkit(self, train_data):
         return self.fit_molalkit_(train_data, self)
 

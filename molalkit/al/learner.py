@@ -320,7 +320,7 @@ class ActiveLearner:
             # evaluate the prediction performance of ML model on the validation set
             if self.metrics is not None:
                 if not self.model_fitted:
-                    self.model_selector.fit_alb(self.dataset_train_selector)
+                    self.model_selector.fit_molalkit(self.dataset_train_selector)
                     self.model_fitted = True
                 y_pred = self.model_selector.predict_value(self.dataset_val_selector)
                 if self.output_details:
@@ -335,7 +335,7 @@ class ActiveLearner:
         # yoked learning
         for i, model in enumerate(self.model_evaluators):
             if self.metrics is not None:
-                model.fit_alb(self.dataset_train_evaluators[i])
+                model.fit_molalkit(self.dataset_train_evaluators[i])
                 y_pred = model.predict_value(self.dataset_val_evaluators[i])
                 if self.output_details:
                     pd.DataFrame({'true': self.dataset_val_selector.y.ravel(), 'pred': y_pred}).to_csv(
@@ -348,7 +348,7 @@ class ActiveLearner:
     def add_samples(self, alr: ActiveLearningResult):
         # train the model if it is not trained in the evaluation step, and the selection method is not random.
         if not self.model_fitted and not isinstance(self.selection_method, RandomSelectionMethod):
-            self.model_selector.fit_alb(self.dataset_train_selector)
+            self.model_selector.fit_molalkit(self.dataset_train_selector)
         selected_idx, acquisition, remain_idx = self.selection_method(model=self.model_selector,
                                                                       data_train=self.dataset_train_selector,
                                                                       data_pool=self.dataset_pool_selector_,
@@ -375,7 +375,7 @@ class ActiveLearner:
             return
         # train the model if the forgetter is not random or first.
         if not self.model_fitted and not self.forgetter.__class__ in [RandomForgetter, FirstForgetter]:
-            self.model_selector.fit_alb(self.dataset_train_selector)
+            self.model_selector.fit_molalkit(self.dataset_train_selector)
         # forget algorithm is applied.
         forget_idx, acquisition = self.forgetter(model=self.model_selector,
                                                  data=self.dataset_train_selector,

@@ -95,7 +95,7 @@ class MPNN:
         self.continuous_fit = continuous_fit
         self.logger = logger
 
-    def fit_alb(self, train_data):
+    def fit_molalkit(self, train_data):
         if not self.continuous_fit and torch.cuda.is_available():
             torch.cuda.empty_cache()
         args = self.args
