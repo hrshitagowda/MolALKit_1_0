@@ -566,12 +566,14 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
         fingerprints_class = self.model_config_selector_dict.get('fingerprints_class')
         radius = self.model_config_selector_dict.get('radius')
         num_bits = self.model_config_selector_dict.get('num_bits')
+        atomInvariantsGenerator = self.model_config_selector_dict.get('atomInvariantsGenerator')
         if fingerprints_class is None:
             return None
         else:
             return [FeaturesGenerator(features_generator_name=fc,
                                       radius=radius,
-                                      num_bits=num_bits) for fc in fingerprints_class]
+                                      num_bits=num_bits,
+                                      atomInvariantsGenerator=atomInvariantsGenerator) for fc in fingerprints_class]
 
     @property
     def features_generator_evaluators(self) -> Optional[List[List[FeaturesGenerator]]]:
@@ -580,12 +582,14 @@ class ActiveLearningArgs(DatasetArgs, ModelArgs):
             fingerprints_class = model_config.get('fingerprints_class')
             radius = model_config.get('radius')
             num_bits = model_config.get('num_bits')
+            atomInvariantsGenerator = model_config.get('atomInvariantsGenerator')
             if fingerprints_class is None:
                 results.append(None)
             else:
                 results.append([FeaturesGenerator(features_generator_name=fc,
                                                   radius=radius,
-                                                  num_bits=num_bits) for fc in fingerprints_class])
+                                                  num_bits=num_bits, 
+                                                  atomInvariantsGenerator=atomInvariantsGenerator) for fc in fingerprints_class])
         return results
 
     @property
@@ -961,12 +965,14 @@ class ReEvaluateArgs(CommonArgs):
         fingerprints_class = self.model_config_evaluator_dict.get('fingerprints_class')
         radius = self.model_config_evaluator_dict.get('radius')
         num_bits = self.model_config_evaluator_dict.get('num_bits')
+        atomInvariantsGenerator = self.model_config_evaluator_dict.get('atomInvariantsGenerator')
         if fingerprints_class is None:
             return None
         else:
             return [FeaturesGenerator(features_generator_name=fc,
                                       radius=radius,
-                                      num_bits=num_bits) for fc in fingerprints_class]
+                                      num_bits=num_bits,
+                                      atomInvariantsGenerator=atomInvariantsGenerator) for fc in fingerprints_class]
 
     @property
     def kernel_evaluator(self):
