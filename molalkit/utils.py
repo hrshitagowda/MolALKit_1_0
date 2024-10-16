@@ -152,6 +152,10 @@ def get_model(data_format: Literal['mgktools', 'chemprop', 'fingerprints'],
             assert dataset_type == 'classification'
             from molalkit.models.extra_trees.extra_trees import ExtraTreesClassifier
             return ExtraTreesClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=n_jobs, random_state=seed)
+        elif model == 'gradient_boosting':
+            assert dataset_type == 'classification'
+            from molalkit.models.gradient_boosting.gradient_boosting import GradientBoostingClassifier
+            return GradientBoostingClassifier(n_estimators=n_estimators, max_depth=max_depth, n_jobs=n_jobs, random_state=seed)
         elif model == 'gaussian_process_regression':
             assert dataset_type in ['regression', 'classification']
             assert uncertainty_type is not None
