@@ -1,5 +1,5 @@
 from sklearn.ensemble import GradientBoostingClassifier as GBC
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class GradientBoostingClassifier(GBC, BaseSklearnModel):
