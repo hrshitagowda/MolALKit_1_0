@@ -3,9 +3,9 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 import numpy as np
-from molalkit.models.random_forest.RandomForestClassifier import RFClassifier
-from molalkit.models.gaussian_process.GaussianProcessRegressor import GPRegressor
-from molalkit.al.selection_method import get_topn_idx
+from MolALKit_1_0.models.random_forest.RandomForestClassifier import RFClassifier
+from MolALKit_1_0.models.gaussian_process.GaussianProcessRegressor import GPRegressor
+from MolALKit_1_0.al.selection_method import get_topn_idx
 
 
 class BaseForgetter(ABC):
