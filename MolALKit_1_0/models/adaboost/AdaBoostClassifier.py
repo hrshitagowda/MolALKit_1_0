@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from sklearn.ensemble import AdaBoostClassifier as AdaBoostC
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class AdaBoostClassifier(AdaBoostC, BaseSklearnModel):
