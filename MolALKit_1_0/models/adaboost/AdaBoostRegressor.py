@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from sklearn.ensemble import AdaBoostRegressor as AdaBoostR
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class AdaBoostRegressor(AdaBoostR, BaseSklearnModel):
