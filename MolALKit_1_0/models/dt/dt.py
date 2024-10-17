@@ -1,5 +1,5 @@
 from sklearn.tree import DecisionTreeClassifier as DTC
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class DecisionTreeClassifier(DTC, BaseSklearnModel):
