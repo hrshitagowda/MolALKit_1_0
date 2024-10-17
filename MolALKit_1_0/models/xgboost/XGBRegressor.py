@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from xgboost import XGBRegressor as XGBR
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class XGBRegressor(XGBR, BaseSklearnModel):
