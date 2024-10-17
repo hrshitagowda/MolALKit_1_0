@@ -12,7 +12,7 @@ from logging import Logger
 from sklearn.metrics import *
 import scipy
 from functools import cached_property
-from molalkit.models.mpnn.mpnn import MPNN, TrainArgs
+from MolALKit_1_0.models.mpnn.mpnn import MPNN, TrainArgs
 from ..args import Metric
 from .selection_method import BaseSelectionMethod, RandomSelectionMethod, get_subset
 from .forgetter import BaseForgetter, RandomForgetter, FirstForgetter
