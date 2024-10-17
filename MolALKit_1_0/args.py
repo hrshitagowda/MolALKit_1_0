@@ -12,11 +12,11 @@ import numpy as np
 from mgktools.features_mol import FeaturesGenerator
 from mgktools.data.split import data_split_index
 from mgktools.evaluators.metric import Metric
-from molalkit.logging import create_logger
-from molalkit.utils import get_data, get_model, get_kernel
-from molalkit.data.datasets import DATA_DIR
-from molalkit.al.selection_method import *
-from molalkit.al.forgetter import *
+from MolALKit_1_0.logging import create_logger
+from MolALKit_1_0.utils import get_data, get_model, get_kernel
+from MolALKit_1_0.data.datasets import DATA_DIR
+from MolALKit_1_0.al.selection_method import *
+from MolALKit_1_0.al.forgetter import *
 CWD = os.path.dirname(os.path.abspath(__file__))
 
 
