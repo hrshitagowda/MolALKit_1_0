@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from mgktools.models.classification.gpc.gpc import GPC_MGK
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class GPClassifier(GPC_MGK, BaseSklearnModel):
