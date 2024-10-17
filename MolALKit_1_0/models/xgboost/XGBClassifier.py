@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from xgboost import XGBClassifier as XGBC
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class XGBClassifier(XGBC, BaseSklearnModel):
