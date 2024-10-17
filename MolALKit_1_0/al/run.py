@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 import os.path
 import time
-from molalkit.args import ActiveLearningArgs, ActiveLearningContinueArgs, ReEvaluateArgs
-from molalkit.al.learner import ActiveLearner
+from MolALKit_1_0.args import ActiveLearningArgs, ActiveLearningContinueArgs, ReEvaluateArgs
+from MolALKit_1_0.al.learner import ActiveLearner
 
 
 def molalkit_run(arguments=None):
