@@ -1,5 +1,5 @@
 from sklearn.ensemble import ExtraTreesClassifier as ETC
-from molalkit.models.base import BaseSklearnModel
+from MolALKit_1_0.models.base import BaseSklearnModel
 
 
 class ExtraTreesClassifier(ETC, BaseSklearnModel):
